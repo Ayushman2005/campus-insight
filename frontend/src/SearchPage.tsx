@@ -9,8 +9,8 @@ import {
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, Legend 
 } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// --- TYPES ---
 interface SearchResult {
   id: string;
   title: string;
@@ -35,9 +35,22 @@ interface SystemStats {
   latency: string;
 }
 
-// --- COMPONENTS ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
 
-const CountUp = ({ end, duration = 1000, suffix = "" }: { end: number, duration?: number, suffix?: string }) => {
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
+
+const CountUp = ({ end, duration = 1500, suffix = "" }: { end: number, duration?: number, suffix?: string }) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -60,23 +73,24 @@ const CountUp = ({ end, duration = 1000, suffix = "" }: { end: number, duration?
 };
 
 const SkeletonCard = () => (
-  <div className="rounded-2xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-pulse">
-    <div className="flex justify-between mb-4">
+  <motion.div 
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    className="rounded-2xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm"
+  >
+    <div className="flex justify-between mb-4 animate-pulse">
       <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
       <div className="flex gap-2">
         <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
         <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
       </div>
     </div>
-    <div className="space-y-2">
+    <div className="space-y-2 animate-pulse">
       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6"></div>
       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-4/6"></div>
     </div>
-  </div>
+  </motion.div>
 );
-
-// --- MAIN PAGE ---
 
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -86,7 +100,6 @@ const SearchPage: React.FC = () => {
   const [scrapeUrl, setScrapeUrl] = useState('');
   const [showScrapeModal, setShowScrapeModal] = useState(false);
   
-  // HISTORY STATE
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -110,20 +123,15 @@ const SearchPage: React.FC = () => {
 
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- EFFECTS ---
-
   useEffect(() => {
     localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light');
     if (isDarkMode) document.body.classList.add('dark');
     else document.body.classList.remove('dark');
   }, [isDarkMode]);
 
-  // Load History on Mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('campus_search_history');
-    if (savedHistory) {
-      setSearchHistory(JSON.parse(savedHistory));
-    }
+    if (savedHistory) setSearchHistory(JSON.parse(savedHistory));
   }, []);
 
   const fetchStats = async () => {
@@ -149,14 +157,9 @@ const SearchPage: React.FC = () => {
     }
   }, [toast.show]);
 
-  // --- HELPERS ---
-
   const addNotification = useCallback((type: 'success' | 'error', message: string) => {
     const newNote: NotificationItem = { id: Date.now(), type, message, timestamp: Date.now() };
-    setNotifications(prev => {
-        const updated = [newNote, ...prev];
-        return updated.slice(0, 10);
-    });
+    setNotifications(prev => [newNote, ...prev].slice(0, 10));
     setToast({ show: true, type, message });
   }, []);
 
@@ -182,8 +185,6 @@ const SearchPage: React.FC = () => {
         localStorage.removeItem('campus_search_history');
     }
   };
-
-  // --- HANDLERS ---
 
   const handleScrape = async () => {
     if (!scrapeUrl) return;
@@ -225,9 +226,9 @@ const SearchPage: React.FC = () => {
     setLoading(true);
     setResults([]);
     setQuery(searchTerm);
-    saveToHistory(searchTerm); // Save to history
+    saveToHistory(searchTerm);
     
-    await new Promise(resolve => setTimeout(resolve, 400)); // Small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     try {
       const response = await fetch('http://localhost:8000/api/search', {
@@ -358,97 +359,102 @@ const SearchPage: React.FC = () => {
   const theme = {
     bg: isDarkMode ? "bg-slate-950" : "bg-gray-50",
     text: isDarkMode ? "text-slate-200" : "text-gray-700",
-    header: isDarkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/90 border-gray-200",
+    header: isDarkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-gray-200",
     card: isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200 shadow-sm",
     statCard: isDarkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-gray-200 shadow-sm",
-    inputBg: isDarkMode ? "bg-slate-900 border-slate-700 text-white placeholder-slate-500" : "bg-white border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm",
+    inputBg: isDarkMode ? "bg-slate-900/50 border-slate-700 text-white placeholder-slate-400" : "bg-white/50 border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm",
     progressBarBg: isDarkMode ? "bg-slate-800" : "bg-gray-200",
     divider: isDarkMode ? "border-slate-800" : "border-gray-200",
     iconBtn: isDarkMode ? "text-slate-400 hover:text-white hover:bg-slate-800" : "text-gray-500 hover:text-blue-600 hover:bg-gray-100",
     dropdown: isDarkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-200 shadow-xl",
     dropdownItem: isDarkMode ? "hover:bg-slate-800/50 border-slate-800" : "hover:bg-gray-50 border-gray-100",
-    sidebar: isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200",
+    sidebar: isDarkMode ? "bg-slate-950 border-slate-800" : "bg-white border-gray-200",
   };
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-300 flex ${theme.bg} ${theme.text}`} onClick={() => setShowDropdown(false)}>
+    <div className={`min-h-screen font-sans transition-colors duration-500 flex ${theme.bg} ${theme.text}`} onClick={() => setShowDropdown(false)}>
       
-      {/* --- SIDEBAR --- */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out border-r flex flex-col ${theme.sidebar} ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}
+      <motion.aside 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 260 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        className={`fixed inset-y-0 left-0 z-30 border-r flex flex-col overflow-hidden ${theme.sidebar} md:relative`}
       >
         <div className="p-6 flex items-center gap-3 border-b border-opacity-10 border-gray-500">
-           <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg">
+           <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20">
              <GraduationCap className="text-white" size={20} />
            </div>
-           <h1 className="font-bold text-lg tracking-tight">Campus Insight</h1>
+           <h1 className="font-bold text-lg tracking-tight whitespace-nowrap">Campus Insight</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-            <div className="mb-6">
-                <button onClick={() => runSearch("")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-2 font-medium transition-colors ${!query && results.length === 0 ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}>
-                    <LayoutGrid size={18} /> Dashboard
-                </button>
-            </div>
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <motion.button 
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => { runSearch(""); }} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-6 font-medium transition-colors ${!query && results.length === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
+            >
+                <LayoutGrid size={18} /> Dashboard
+            </motion.button>
 
             <div className="mb-2 px-4 flex justify-between items-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <span>Recent Searches</span>
-                {searchHistory.length > 0 && <button onClick={clearHistory} className="hover:text-red-500">Clear</button>}
+                <span>Recent History</span>
+                {searchHistory.length > 0 && <button onClick={clearHistory} className="hover:text-red-500 transition-colors">Clear</button>}
             </div>
             
             <div className="space-y-1">
+                <AnimatePresence>
                 {searchHistory.length === 0 ? (
                     <div className="px-4 py-4 text-sm text-slate-400 italic">No recent searches</div>
                 ) : (
-                    searchHistory.map((item, i) => (
-                        <div key={i} onClick={() => runSearch(item)} className={`group flex items-center justify-between px-4 py-2.5 rounded-lg cursor-pointer text-sm transition-colors ${theme.text} hover:bg-slate-100 dark:hover:bg-slate-800`}>
+                    searchHistory.map((item) => (
+                        <motion.div 
+                            key={item}
+                            layout
+                            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                            onClick={() => runSearch(item)} 
+                            className={`group flex items-center justify-between px-4 py-2.5 rounded-lg cursor-pointer text-sm transition-all ${theme.text} hover:bg-slate-100 dark:hover:bg-slate-800`}
+                        >
                             <div className="flex items-center gap-3 overflow-hidden">
                                 <History size={14} className="opacity-50 flex-shrink-0"/>
                                 <span className="truncate">{item}</span>
                             </div>
-                            <button onClick={(e) => removeFromHistory(e, item)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500">
+                            <button onClick={(e) => removeFromHistory(e, item)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity">
                                 <X size={14} />
                             </button>
-                        </div>
+                        </motion.div>
                     ))
                 )}
+                </AnimatePresence>
             </div>
         </div>
+      </motion.aside>
 
-        <div className="p-4 border-t border-opacity-10 border-gray-500 text-xs text-slate-500 text-center">
-            v3.0.1 • Local Storage Active
-        </div>
-      </aside>
-
-      {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
-        {/* HEADER */}
-        <header className={`backdrop-blur-md border-b sticky top-0 z-20 px-6 py-4 flex justify-between items-center ${theme.header}`}>
+        <header className={`backdrop-blur-xl border-b sticky top-0 z-20 px-6 py-4 flex justify-between items-center ${theme.header}`}>
             <div className="flex items-center gap-4">
-                <button className="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                    <ChevronRight size={20} className={`transform transition-transform ${isSidebarOpen ? 'rotate-180' : '0'}`}/>
+                <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                    <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>
                 </button>
-                <h2 className="font-semibold text-lg opacity-80 hidden md:block">{query ? `Results for "${query}"` : 'Dashboard'}</h2>
             </div>
 
             <div className="flex items-center gap-3">
-                <button onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
                   <Globe size={14} className="text-emerald-500" /> Live Scrape
-                </button>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-slate-400 hover:text-white transition-colors">
+                </motion.button>
+                <motion.button whileTap={{ rotate: 180 }} onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-slate-400 hover:text-white transition-colors">
                   {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-                <button onClick={handleScan} disabled={scanning} className={`p-2 rounded-full text-slate-400 hover:text-blue-500 transition-colors ${scanning ? 'animate-spin' : ''}`}>
+                </motion.button>
+                <motion.button whileTap={{ rotate: 360 }} onClick={handleScan} disabled={scanning} className={`p-2 rounded-full text-slate-400 hover:text-blue-500 transition-colors ${scanning ? 'animate-spin' : ''}`}>
                   <RefreshCw size={20} />
-                </button>
+                </motion.button>
                 <div className="relative">
-                  <button onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }} className={`p-2 rounded-full relative transition-colors ${theme.iconBtn}`}>
+                  <motion.button whileHover={{ scale: 1.1 }} onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }} className={`p-2 rounded-full relative transition-colors ${theme.iconBtn}`}>
                     <Bell size={20} />
                     {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>}
-                  </button>
+                  </motion.button>
+                  <AnimatePresence>
                   {showDropdown && (
-                    <div className={`absolute right-0 mt-3 w-80 rounded-xl border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200 ${theme.dropdown}`}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={`absolute right-0 mt-3 w-80 rounded-xl border overflow-hidden z-50 ${theme.dropdown}`}>
                       <div className={`p-3 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-gray-50 border-gray-100'}`}>
                         <h3 className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
                         {notifications.length > 0 && <button onClick={clearNotifications} className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"><Trash2 size={12}/> Clear</button>}
@@ -470,20 +476,22 @@ const SearchPage: React.FC = () => {
                           ))
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
             </div>
         </header>
 
-        {/* SCROLLABLE BODY */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth custom-scrollbar relative">
             <div className="max-w-5xl mx-auto w-full">
                 
-                {/* SEARCH INPUT */}
-                <div className="flex flex-col items-center justify-center mb-8">
-                  <div 
-                    className={`w-full relative rounded-2xl border-2 border-dashed transition-all duration-300 ${isDragging ? 'border-blue-500 bg-blue-500/10' : theme.inputBg} ${isDarkMode ? 'border-slate-700' : 'border-gray-300'}`}
+                <div className="flex flex-col items-center justify-center mb-10 relative">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-32 bg-blue-500/20 dark:bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+
+                  <motion.div 
+                    layout
+                    className={`w-full relative rounded-2xl border transition-all duration-300 backdrop-blur-sm z-10 ${isDragging ? 'border-blue-500 bg-blue-500/10' : theme.inputBg} ${isDarkMode ? 'border-slate-700' : 'border-gray-300'}`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -491,37 +499,43 @@ const SearchPage: React.FC = () => {
                     {isDragging ? (
                        <div className="py-8 flex flex-col items-center justify-center text-blue-500 animate-pulse">
                           <UploadCloud size={48} />
-                          <p className="mt-2 font-bold text-lg">Drop files to upload instantly</p>
+                          <p className="mt-2 font-bold text-lg">Drop to upload</p>
                        </div>
                     ) : (
-                      <form onSubmit={handleSearchForm} className="relative flex items-center overflow-hidden">
-                        <div className="pl-6 text-slate-400"><Search size={24} /></div>
+                      <form onSubmit={handleSearchForm} className="relative flex items-center overflow-hidden p-1">
+                        <div className="pl-5 text-slate-400"><Search size={22} /></div>
                         <input
                           type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-                          placeholder="Search documents (or drag & drop files)..."
-                          className="w-full py-5 px-4 text-lg bg-transparent focus:outline-none font-medium"
+                          placeholder="Search documents or drop files..."
+                          className="w-full py-4 px-4 text-lg bg-transparent focus:outline-none font-medium placeholder-slate-400"
                         />
                         <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className={`mx-2 p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`} title="Upload Files"><FilePlus size={20} /></button>
-                        <button type="submit" disabled={loading} className="mx-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all">{loading ? 'Searching...' : 'Search'}</button>
+                        <motion.button type="button" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="p-2 mr-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FilePlus size={20} /></motion.button>
+                        <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loading} className="mr-1 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all">
+                          {loading ? 'Searching...' : 'Search'}
+                        </motion.button>
                       </form>
                     )}
-                  </div>
+                  </motion.div>
                 </div>
 
-                {/* RESULTS */}
                 {loading ? (
                   <div className="space-y-6">
                     <SkeletonCard /><SkeletonCard /><SkeletonCard />
                   </div>
                 ) : results.length > 0 ? (
-                  <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                  <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
                     <div className="flex items-center justify-between px-2">
                        <span className="text-sm font-medium opacity-70">Found {results.length} relevant documents</span>
                        <span className={`text-xs px-2 py-1 rounded border ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>Smart Filter Active</span>
                     </div>
                     {results.map((result) => (
-                      <div key={result.id} className={`group rounded-2xl p-6 border transition-all ${theme.card} hover:border-blue-500/50`}>
+                      <motion.div 
+                        key={result.id} 
+                        variants={itemVariants}
+                        layout
+                        className={`group rounded-2xl p-6 border transition-all ${theme.card} hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10`}
+                      >
                         <div className="flex justify-between items-start mb-3">
                           <h3 className={`text-xl font-bold group-hover:text-blue-500 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3>
                           <div className="flex gap-2">
@@ -531,40 +545,39 @@ const SearchPage: React.FC = () => {
                         </div>
                         <p className="pl-4 py-2 border-l-2 border-blue-500/30 leading-relaxed font-serif text-lg opacity-90">{renderSnippet(result.content, query)}</p>
                         <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-between items-center">
-                          <span className="text-xs text-slate-500 truncate max-w-md">{result.source_url}</span>
+                          <span className="text-xs text-slate-500 truncate max-w-md flex items-center gap-1"><HardDrive size={12}/> {result.source_url}</span>
                           <div className="flex gap-3">
                             <button onClick={() => handleDelete(result.source_url)} className="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /> Delete</button>
                             <button onClick={() => setPreviewDoc(result)} className="text-blue-500 hover:text-blue-400 text-sm font-medium flex items-center gap-1"><Eye size={16} /> View</button>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
-                  </div>
-                ) : (
-                  !query && (
-                    <div className="animate-in fade-in duration-700 space-y-6">
+                  </motion.div>
+                ) : !query && (
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="space-y-6">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className={`p-4 rounded-xl border flex items-center gap-4 ${theme.statCard}`}>
-                            <div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} text-blue-500`}><Database size={20} /></div>
-                            <div><div className="text-xs font-bold uppercase tracking-wider opacity-60">Total Indexed</div><div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><CountUp end={stats.total_documents} /></div></div>
-                        </div>
-                        <div className={`p-4 rounded-xl border flex items-center gap-4 ${theme.statCard}`}>
-                            <div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} text-purple-500`}><HardDrive size={20} /></div>
-                            <div><div className="text-xs font-bold uppercase tracking-wider opacity-60">Storage Used</div><div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stats.storage_used}</div></div>
-                        </div>
-                        <div className={`p-4 rounded-xl border flex items-center gap-4 ${theme.statCard}`}>
-                            <div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} text-emerald-500`}><Activity size={20} /></div>
-                            <div><div className="text-xs font-bold uppercase tracking-wider opacity-60">System Health</div><div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stats.system_health}</div></div>
-                        </div>
-                        <div className={`p-4 rounded-xl border flex items-center gap-4 ${theme.statCard}`}>
-                            <div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} text-orange-500`}><Zap size={20} /></div>
-                            <div><div className="text-xs font-bold uppercase tracking-wider opacity-60">Avg Latency</div><div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stats.latency}</div></div>
-                        </div>
+                        {[
+                            { label: "Total Indexed", val: stats.total_documents, icon: Database, color: "text-blue-500" },
+                            { label: "Storage Used", val: stats.storage_used, icon: HardDrive, color: "text-purple-500", isString: true },
+                            { label: "System Health", val: stats.system_health, icon: Activity, color: "text-emerald-500", isString: true },
+                            { label: "Avg Latency", val: stats.latency, icon: Zap, color: "text-orange-500", isString: true },
+                        ].map((stat, i) => (
+                            <motion.div whileHover={{ y: -5 }} key={i} className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${theme.statCard}`}>
+                                <div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} ${stat.color}`}><stat.icon size={20} /></div>
+                                <div>
+                                    <div className="text-xs font-bold uppercase tracking-wider opacity-60">{stat.label}</div>
+                                    <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                        {stat.isString ? stat.val : <CountUp end={stat.val as number} />}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
                       </div>
                       
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className={`p-6 rounded-2xl border ${theme.card}`}>
-                          <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><LayoutGrid size={18} className="text-blue-500"/> Document Categories</h3>
+                        <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}>
+                          <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><LayoutGrid size={18} className="text-blue-500"/> Categories</h3>
                           <div className="h-48 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
@@ -576,10 +589,10 @@ const SearchPage: React.FC = () => {
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className={`p-6 rounded-2xl border ${theme.card}`}>
-                          <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Activity size={18} className="text-purple-500"/> Weekly Activity</h3>
+                        <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}>
+                          <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Activity size={18} className="text-purple-500"/> Activity</h3>
                           <div className="h-48 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={barData}>
@@ -589,9 +602,9 @@ const SearchPage: React.FC = () => {
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
-                        </div>
+                        </motion.div>
 
-                        <div className={`p-6 rounded-2xl border flex flex-col ${theme.card}`}>
+                        <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border flex flex-col ${theme.card}`}>
                            <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Server size={18} className="text-emerald-500"/> Live Status</h3>
                            <div className="space-y-4 mb-6">
                               <div><div className="flex justify-between text-xs mb-1 opacity-70"><span>Database Load</span><span>45%</span></div><div className={`h-2 rounded-full w-full ${theme.progressBarBg}`}><div className="h-full rounded-full bg-blue-500 w-[45%]"></div></div></div>
@@ -602,56 +615,54 @@ const SearchPage: React.FC = () => {
                                  <HelpCircle size={18} className="text-blue-500 mt-0.5" />
                                  <div>
                                    <div className={`text-sm font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Pro Tip</div>
-                                   <p className="text-xs opacity-70 leading-relaxed">Click history items on the left to quickly re-run past searches.</p>
+                                   <p className="text-xs opacity-70 leading-relaxed">Click 'Live Scrape' to fetch web notices.</p>
                                  </div>
                               </div>
                            </div>
-                        </div>
+                        </motion.div>
                       </div>
-                    </div>
-                  )
+                    </motion.div>
                 )}
             </div>
         </main>
       </div>
       
-      {/* SCRAPE MODAL */}
+      <AnimatePresence>
       {showScrapeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-           <div className={`w-full max-w-lg rounded-2xl p-6 border ${theme.card}`}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${theme.card}`}>
                <h3 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Connect Website</h3>
-               <p className="text-sm opacity-70 mb-4">Enter a URL (e.g., your college notice board). We will fetch all PDFs and Images.</p>
-               <input type="text" value={scrapeUrl} onChange={(e) => setScrapeUrl(e.target.value)} placeholder="https://college.edu/notices" className={`w-full p-3 rounded-lg border mb-4 ${theme.inputBg}`} />
+               <p className="text-sm opacity-70 mb-4">Enter a URL to auto-fetch PDFs and images.</p>
+               <input type="text" value={scrapeUrl} onChange={(e) => setScrapeUrl(e.target.value)} placeholder="https://college.edu/notices" className={`w-full p-3 rounded-lg border mb-6 ${theme.inputBg}`} />
                <div className="flex justify-end gap-3">
-                   <button onClick={() => setShowScrapeModal(false)} className="px-4 py-2 rounded-lg text-sm hover:bg-slate-800">Cancel</button>
-                   <button onClick={handleScrape} className="px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-500">Start Scraper</button>
+                   <button onClick={() => setShowScrapeModal(false)} className="px-4 py-2 rounded-lg text-sm hover:bg-slate-800 transition-colors">Cancel</button>
+                   <button onClick={handleScrape} className="px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-colors">Start Scraper</button>
                </div>
-           </div>
-        </div>
+           </motion.div>
+        </motion.div>
       )}
 
-      {/* TOAST */}
       {toast.show && (
-        <div className={`fixed bottom-6 right-6 max-w-sm w-full rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 animate-in slide-in-from-right-5 ${isDarkMode ? 'bg-slate-900 border-emerald-500' : 'bg-white border-emerald-500'}`}>
+        <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} className={`fixed bottom-6 right-6 max-w-sm w-full rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 ${isDarkMode ? 'bg-slate-900 border-emerald-500' : 'bg-white border-emerald-500'}`}>
            <CheckCircle className="text-emerald-500" size={20} />
            <p className={`text-sm ${theme.text}`}>{toast.message}</p>
-        </div>
+        </motion.div>
       )}
       
-      {/* PREVIEW MODAL */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className={`w-full max-w-4xl h-[85vh] rounded-2xl flex flex-col overflow-hidden border ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <div className="p-4 border-b border-slate-700 flex justify-between items-center">
-              <div><h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{previewDoc.title}</h3></div>
-              <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-slate-800 rounded-full"><X size={24} className="text-slate-400" /></button>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <motion.div initial={{ y: 50 }} animate={{ y: 0 }} exit={{ y: 50 }} className={`w-full max-w-5xl h-[85vh] rounded-2xl flex flex-col overflow-hidden border shadow-2xl ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <div><h3 className="font-bold text-white">{previewDoc.title}</h3></div>
+              <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
             </div>
             <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-4">
-              {previewDoc.source_url.endsWith('.pdf') ? <iframe src={previewDoc.source_url} className="w-full h-full rounded-lg" title="Preview" /> : <img src={previewDoc.source_url} alt="Doc" className="max-w-full max-h-full object-contain" />}
+              {previewDoc.source_url.endsWith('.pdf') ? <iframe src={previewDoc.source_url} className="w-full h-full rounded-lg" title="Preview" /> : <img src={previewDoc.source_url} alt="Doc" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };
