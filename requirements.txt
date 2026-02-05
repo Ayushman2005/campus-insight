@@ -1,0 +1,50 @@
+
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# OCR and Image Processing
+pytesseract==0.3.10
+pdf2image==1.17.0
+Pillow==10.2.0
+opencv-python==4.9.0.80
+
+# NLP and Embeddings
+sentence-transformers==2.3.1
+transformers==4.37.2
+
+# Vector Database
+chromadb==0.4.22
+
+# Web Scraping
+beautifulsoup4==4.12.3
+requests==2.31.0
+selenium==4.17.2
+lxml==5.1.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9  # PostgreSQL
+pymongo==4.6.1  # MongoDB (optional)
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.5.3
+numpy
+pandas==2.2.0
+
+# Notifications
+python-socketio==5.11.1
+aiosmtplib==3.0.1
+
+# Scheduling
+apscheduler==3.10.4
+
+# Testing
+pytest==8.0.0
+httpx==0.26.0
+
+# Logging and Monitoring
+loguru==0.7.2
