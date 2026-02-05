@@ -48,3 +48,5 @@ httpx==0.26.0
 
 # Logging and Monitoring
 loguru==0.7.2
+
+gunicorn==20.1.0
