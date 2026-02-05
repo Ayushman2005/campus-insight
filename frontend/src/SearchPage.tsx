@@ -4,13 +4,14 @@ import {
   Bell, Trash2, X, GraduationCap, Clock, 
   Activity, Server, LayoutGrid, Sun, Moon, Database, 
   Eye, HardDrive, Zap, HelpCircle, 
-  UploadCloud, FilePlus, Globe, History, ChevronRight
+  UploadCloud, FilePlus, Globe, History, ChevronRight, Menu
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, Legend 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// --- TYPES ---
 interface SearchResult {
   id: string;
   title: string;
@@ -35,14 +36,10 @@ interface SystemStats {
   latency: string;
 }
 
+// --- VARIANTS ---
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
@@ -50,13 +47,13 @@ const itemVariants = {
   show: { opacity: 1, y: 0 }
 };
 
+// --- COMPONENTS ---
+
 const CountUp = ({ end, duration = 1500, suffix = "" }: { end: number, duration?: number, suffix?: string }) => {
   const [count, setCount] = useState(0);
-
   useEffect(() => {
     let startTime: number | null = null;
     let animationFrameId: number;
-
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
@@ -64,11 +61,9 @@ const CountUp = ({ end, duration = 1500, suffix = "" }: { end: number, duration?
       setCount(Math.floor(ease * end));
       if (progress < 1) animationFrameId = requestAnimationFrame(animate);
     };
-
     animationFrameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameId);
   }, [end, duration]);
-
   return <span>{count.toLocaleString()}{suffix}</span>;
 };
 
@@ -92,6 +87,8 @@ const SkeletonCard = () => (
   </motion.div>
 );
 
+// --- MAIN PAGE ---
+
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -101,7 +98,10 @@ const SearchPage: React.FC = () => {
   const [showScrapeModal, setShowScrapeModal] = useState(false);
   
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // Sidebar logic: Closed on mobile by default, open on desktop by default
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
+  const [isMobile, setIsMobile] = useState(false);
 
   const [stats, setStats] = useState<SystemStats>({
     total_documents: 0, storage_used: "0 MB", system_health: "Checking...", latency: "0ms"
@@ -122,6 +122,19 @@ const SearchPage: React.FC = () => {
   });
 
   const [isDragging, setIsDragging] = useState(false);
+
+  // --- RESPONSIVE HANDLER ---
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setIsSidebarOpen(true); // Always open on desktop
+      else setIsSidebarOpen(false); // Always closed on mobile initially
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light');
@@ -223,6 +236,7 @@ const SearchPage: React.FC = () => {
 
   const runSearch = async (searchTerm: string) => {
     if (!searchTerm.trim()) return;
+    if (isMobile) setIsSidebarOpen(false); // Close sidebar on mobile after clicking
     setLoading(true);
     setResults([]);
     setQuery(searchTerm);
@@ -374,10 +388,23 @@ const SearchPage: React.FC = () => {
   return (
     <div className={`min-h-screen font-sans transition-colors duration-500 flex ${theme.bg} ${theme.text}`} onClick={() => setShowDropdown(false)}>
       
+      {/* --- MOBILE SIDEBAR BACKDROP --- */}
+      <AnimatePresence>
+        {isMobile && isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 z-30 backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* --- SIDEBAR --- */}
       <motion.aside 
         initial={false}
-        animate={{ width: isSidebarOpen ? 260 : 0, opacity: isSidebarOpen ? 1 : 0 }}
-        className={`fixed inset-y-0 left-0 z-30 border-r flex flex-col overflow-hidden ${theme.sidebar} md:relative`}
+        animate={{ x: isSidebarOpen ? 0 : (isMobile ? '-100%' : 0), width: !isMobile && !isSidebarOpen ? 0 : 260, opacity: !isMobile && !isSidebarOpen ? 0 : 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`fixed md:relative inset-y-0 left-0 z-40 border-r flex flex-col overflow-hidden ${theme.sidebar}`}
       >
         <div className="p-6 flex items-center gap-3 border-b border-opacity-10 border-gray-500">
            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20">
@@ -428,18 +455,19 @@ const SearchPage: React.FC = () => {
         </div>
       </motion.aside>
 
+      {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
-        <header className={`backdrop-blur-xl border-b sticky top-0 z-20 px-6 py-4 flex justify-between items-center ${theme.header}`}>
+        <header className={`backdrop-blur-xl border-b sticky top-0 z-20 px-4 md:px-6 py-4 flex justify-between items-center ${theme.header}`}>
             <div className="flex items-center gap-4">
                 <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                    <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>
+                    {isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}
                 </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
-                  <Globe size={14} className="text-emerald-500" /> Live Scrape
+                  <Globe size={14} className="text-emerald-500" /> <span className="hidden md:inline">Live Scrape</span>
                 </motion.button>
                 <motion.button whileTap={{ rotate: 180 }} onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-slate-400 hover:text-white transition-colors">
                   {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -454,7 +482,7 @@ const SearchPage: React.FC = () => {
                   </motion.button>
                   <AnimatePresence>
                   {showDropdown && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={`absolute right-0 mt-3 w-80 rounded-xl border overflow-hidden z-50 ${theme.dropdown}`}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={`absolute right-0 mt-3 w-72 md:w-80 rounded-xl border overflow-hidden z-50 ${theme.dropdown}`}>
                       <div className={`p-3 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-gray-50 border-gray-100'}`}>
                         <h3 className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
                         {notifications.length > 0 && <button onClick={clearNotifications} className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"><Trash2 size={12}/> Clear</button>}
@@ -499,20 +527,20 @@ const SearchPage: React.FC = () => {
                     {isDragging ? (
                        <div className="py-8 flex flex-col items-center justify-center text-blue-500 animate-pulse">
                           <UploadCloud size={48} />
-                          <p className="mt-2 font-bold text-lg">Drop to upload</p>
+                          <p className="mt-2 font-bold text-lg">{isMobile ? "Tap to upload" : "Drop to upload"}</p>
                        </div>
                     ) : (
                       <form onSubmit={handleSearchForm} className="relative flex items-center overflow-hidden p-1">
-                        <div className="pl-5 text-slate-400"><Search size={22} /></div>
+                        <div className="pl-3 md:pl-5 text-slate-400"><Search size={22} /></div>
                         <input
                           type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-                          placeholder="Search documents or drop files..."
-                          className="w-full py-4 px-4 text-lg bg-transparent focus:outline-none font-medium placeholder-slate-400"
+                          placeholder={isMobile ? "Search..." : "Search documents or drop files..."}
+                          className="w-full py-4 px-3 md:px-4 text-base md:text-lg bg-transparent focus:outline-none font-medium placeholder-slate-400"
                         />
                         <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
-                        <motion.button type="button" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="p-2 mr-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FilePlus size={20} /></motion.button>
-                        <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loading} className="mr-1 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all">
-                          {loading ? 'Searching...' : 'Search'}
+                        <motion.button type="button" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="p-2 mr-1 md:mr-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FilePlus size={20} /></motion.button>
+                        <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loading} className="mr-1 px-4 md:px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all text-sm md:text-base">
+                          {loading ? '...' : 'Search'}
                         </motion.button>
                       </form>
                     )}
@@ -534,20 +562,20 @@ const SearchPage: React.FC = () => {
                         key={result.id} 
                         variants={itemVariants}
                         layout
-                        className={`group rounded-2xl p-6 border transition-all ${theme.card} hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10`}
+                        className={`group rounded-2xl p-4 md:p-6 border transition-all ${theme.card} hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10`}
                       >
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className={`text-xl font-bold group-hover:text-blue-500 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3>
+                        <div className="flex flex-col md:flex-row justify-between items-start mb-3 gap-2">
+                          <h3 className={`text-lg md:text-xl font-bold group-hover:text-blue-500 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3>
                           <div className="flex gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isDarkMode ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-700 border-blue-100'}`}><Calendar size={12} /> {result.date}</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}><Tag size={12} /> {result.category}</span>
+                            <span className={`px-2 py-1 md:px-3 rounded-full text-xs font-medium border flex items-center gap-1 ${isDarkMode ? 'bg-slate-800 text-blue-400 border-slate-700' : 'bg-blue-50 text-blue-700 border-blue-100'}`}><Calendar size={12} /> {result.date}</span>
+                            <span className={`px-2 py-1 md:px-3 rounded-full text-xs font-medium border flex items-center gap-1 ${isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}><Tag size={12} /> {result.category}</span>
                           </div>
                         </div>
-                        <p className="pl-4 py-2 border-l-2 border-blue-500/30 leading-relaxed font-serif text-lg opacity-90">{renderSnippet(result.content, query)}</p>
-                        <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-between items-center">
-                          <span className="text-xs text-slate-500 truncate max-w-md flex items-center gap-1"><HardDrive size={12}/> {result.source_url}</span>
-                          <div className="flex gap-3">
-                            <button onClick={() => handleDelete(result.source_url)} className="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /> Delete</button>
+                        <p className="pl-3 md:pl-4 py-2 border-l-2 border-blue-500/30 leading-relaxed font-serif text-base md:text-lg opacity-90">{renderSnippet(result.content, query)}</p>
+                        <div className="mt-4 pt-4 border-t border-slate-800/50 flex flex-col md:flex-row justify-between items-center gap-3">
+                          <span className="text-xs text-slate-500 truncate w-full md:max-w-md flex items-center gap-1"><HardDrive size={12}/> {result.source_url}</span>
+                          <div className="flex gap-3 w-full md:w-auto justify-end">
+                            <button onClick={() => handleDelete(result.source_url)} className="text-red-500 hover:text-red-400 text-sm font-medium flex items-center gap-1"><Trash2 size={16} /> <span className="md:hidden">Delete</span></button>
                             <button onClick={() => setPreviewDoc(result)} className="text-blue-500 hover:text-blue-400 text-sm font-medium flex items-center gap-1"><Eye size={16} /> View</button>
                           </div>
                         </div>
@@ -556,7 +584,7 @@ const SearchPage: React.FC = () => {
                   </motion.div>
                 ) : !query && (
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="space-y-6">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {[
                             { label: "Total Indexed", val: stats.total_documents, icon: Database, color: "text-blue-500" },
                             { label: "Storage Used", val: stats.storage_used, icon: HardDrive, color: "text-purple-500", isString: true },
@@ -575,7 +603,7 @@ const SearchPage: React.FC = () => {
                         ))}
                       </div>
                       
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                         <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}>
                           <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><LayoutGrid size={18} className="text-blue-500"/> Categories</h3>
                           <div className="h-48 w-full">
@@ -643,20 +671,20 @@ const SearchPage: React.FC = () => {
       )}
 
       {toast.show && (
-        <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} className={`fixed bottom-6 right-6 max-w-sm w-full rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 ${isDarkMode ? 'bg-slate-900 border-emerald-500' : 'bg-white border-emerald-500'}`}>
-           <CheckCircle className="text-emerald-500" size={20} />
+        <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} className={`fixed bottom-6 right-6 max-w-sm w-[90%] md:w-full rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 ${isDarkMode ? 'bg-slate-900 border-emerald-500' : 'bg-white border-emerald-500'}`}>
+           <CheckCircle className="text-emerald-500 flex-shrink-0" size={20} />
            <p className={`text-sm ${theme.text}`}>{toast.message}</p>
         </motion.div>
       )}
       
       {previewDoc && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/80 backdrop-blur-md">
           <motion.div initial={{ y: 50 }} animate={{ y: 0 }} exit={{ y: 50 }} className={`w-full max-w-5xl h-[85vh] rounded-2xl flex flex-col overflow-hidden border shadow-2xl ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
             <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900">
-              <div><h3 className="font-bold text-white">{previewDoc.title}</h3></div>
+              <div><h3 className="font-bold text-white text-sm md:text-base">{previewDoc.title}</h3></div>
               <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
             </div>
-            <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-4">
+            <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2 md:p-4">
               {previewDoc.source_url.endsWith('.pdf') ? <iframe src={previewDoc.source_url} className="w-full h-full rounded-lg" title="Preview" /> : <img src={previewDoc.source_url} alt="Doc" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />}
             </div>
           </motion.div>
