@@ -1,8 +1,10 @@
 import os
 import re
 import shutil
+import asyncio
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,7 +22,8 @@ from campus_scraper import scrape_website
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# --- CONFIGURATION ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") 
 TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -43,6 +46,7 @@ ocr_processor = OCRProcessor()
 search_engine = SemanticSearchEngine()
 scheduler = BackgroundScheduler()
 
+# --- DATA MODELS ---
 class SearchQuery(BaseModel):
     query: str
     filters: Optional[dict] = None
@@ -59,15 +63,17 @@ class SearchResult(BaseModel):
     date: Optional[str] = "N/A"
     relevance_score: float
     category: Optional[str] = "General"
+    extracted_answer: Optional[str] = None 
 
 class ScrapeRequest(BaseModel):
     url: str
+
+# --- HELPERS ---
 
 def extract_date_from_text(text: str) -> str:
     patterns = [
         r'\d{2}/\d{2}/\d{4}',
         r'\d{4}-\d{2}-\d{2}',
-        r'\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}',
         r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}'
     ]
     for pattern in patterns:
@@ -75,6 +81,65 @@ def extract_date_from_text(text: str) -> str:
         if match:
             return match.group(0)
     return datetime.now().strftime("%Y-%m-%d")
+
+def calculate_smart_age(text: str) -> Optional[str]:
+    """
+    Python Fallback: If no explicit DOB, look for birth years in text or emails.
+    """
+    try:
+        current_year = datetime.now().year
+        
+        # 1. Look for years like 2000-2010 (common for students)
+        # matches "2004" in "ayushman2004@gmail.com" or just "2004"
+        year_matches = re.findall(r'(199\d|200\d|201\d)', text)
+        
+        possible_ages = []
+        for year_str in year_matches:
+            y = int(year_str)
+            # Filter unlikely years (e.g. current year or graduation years like 2027)
+            if 1980 < y < (current_year - 15): 
+                possible_ages.append(current_year - y)
+        
+        if possible_ages:
+            # Return the most likely age (max of reasonable ages found)
+            return str(max(possible_ages))
+            
+        return None
+    except:
+        return None
+
+def get_ai_extraction(text: str, query: str) -> str:
+    """Uses Gemini to intelligently extract specific data points."""
+    
+    # 1. PYTHON MATH FALLBACK (Fast & Accurate for Age)
+    if "age" in query.lower():
+        math_age = calculate_smart_age(text)
+        if math_age:
+            return math_age
+
+    # 2. GENERATIVE AI FALLBACK
+    try:
+        current_year = datetime.now().year
+        prompt = f"""
+        Extract the exact answer.
+        Query: "{query}"
+        Context: "{text[:2000]}"
+        Current Year: {current_year}
+        
+        Rules:
+        - If query is 'Age' and you see a birth year or probable birth year (e.g. in email), calculate age.
+        - Return ONLY the result (e.g. "21"). No text.
+        - If not found, return "None".
+        """
+        response = model.generate_content(prompt)
+        answer = response.text.strip().replace('"', '').replace("'", "").replace(".", "")
+        
+        if "None" in answer or len(answer) > 50: 
+            return None
+        
+        return answer
+    except Exception:
+        return None
 
 def process_file(file_path: Path):
     try:
@@ -88,10 +153,9 @@ def process_file(file_path: Path):
         
         category = "General"
         text_lower = processed_data['text'].lower()
-        if "exam" in text_lower or "schedule" in text_lower: category = "Exams"
-        elif "fee" in text_lower or "payment" in text_lower: category = "Fees"
-        elif "scholarship" in text_lower or "st/sc" in text_lower or "obc" in text_lower: category = "Scholarships"
-        elif "lab" in text_lower or "syllabus" in text_lower: category = "Academics"
+        if "resume" in text_lower or "cv" in text_lower: category = "Resume"
+        elif "exam" in text_lower: category = "Exams"
+        elif "fee" in text_lower: category = "Fees"
 
         metadata = {
             "title": file_path.stem,
@@ -106,11 +170,10 @@ def process_file(file_path: Path):
         logger.error(f"Error processing {file_path.name}: {e}")
         return False
 
+# --- TASKS ---
 def scheduled_scraper_job():
-    logger.info("Running scheduled scrape...")
     new_files = scrape_website(TARGET_WEBSITE, DOCS_FOLDER)
     if new_files:
-        logger.info(f"Downloaded {len(new_files)} new files. Indexing now...")
         for filename in new_files:
             process_file(DOCS_FOLDER / filename)
 
@@ -123,44 +186,52 @@ def start_scheduler():
 def shutdown_scheduler():
     scheduler.shutdown()
 
+# --- ENDPOINTS ---
+
 @app.get("/")
 async def root():
-    return {"status": "running", "docs_indexed": search_engine.get_document_count()}
+    return {"status": "running"}
 
 @app.get("/api/stats")
 async def get_stats():
     try:
         doc_count = search_engine.get_document_count()
-        
         total_size = sum(f.stat().st_size for f in DOCS_FOLDER.glob('**/*') if f.is_file())
-        storage_mb = round(total_size / (1024 * 1024), 2) 
+        storage_mb = round(total_size / (1024 * 1024), 2)
+        
+        activity_counts = {"Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0}
+        days_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        
+        for file_path in DOCS_FOLDER.iterdir():
+            if file_path.is_file():
+                try:
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                    day_name = mtime.strftime("%a")
+                    if day_name in activity_counts:
+                        activity_counts[day_name] += 1
+                except Exception:
+                    continue
+
+        activity_data = [{"name": day, "files": activity_counts[day]} for day in days_order]
         
         return {
             "total_documents": doc_count,
             "storage_used": f"{storage_mb} MB",
             "system_health": "100%",
-            "latency": "24ms" 
+            "latency": "24ms", 
+            "activity_data": activity_data
         }
-    except Exception as e:
-        return {
-            "total_documents": 0,
-            "storage_used": "0 MB",
-            "system_health": "Error",
-            "latency": "0ms"
-        }
+    except Exception:
+        return {"total_documents": 0, "storage_used": "0 MB", "system_health": "Error", "latency": "0ms", "activity_data": []}
 
 @app.post("/api/trigger-scrape")
 async def manual_scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
     def scrape_and_index():
         new_files = scrape_website(request.url, DOCS_FOLDER)
-        indexed_count = 0
         for filename in new_files:
-            if process_file(DOCS_FOLDER / filename):
-                indexed_count += 1
-        logger.info(f"Manual scrape complete. Indexed {indexed_count} files.")
-
+            process_file(DOCS_FOLDER / filename)
     background_tasks.add_task(scrape_and_index)
-    return {"status": "success", "message": "Scraping started in background. Check notifications shortly."}
+    return {"status": "success"}
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -168,12 +239,9 @@ async def upload_file(file: UploadFile = File(...)):
         file_path = DOCS_FOLDER / file.filename
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
         if process_file(file_path):
-             return {"status": "success", "message": f"Uploaded and indexed {file.filename}"}
-        else:
-             return {"status": "warning", "message": "Uploaded but text extraction failed."}
-
+             return {"status": "success", "message": f"Uploaded {file.filename}"}
+        return {"status": "warning", "message": "Failed to process text."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -181,64 +249,65 @@ async def upload_file(file: UploadFile = File(...)):
 async def delete_document(filename: str):
     try:
         file_path = DOCS_FOLDER / filename
-        file_deleted = False
-        if file_path.exists():
-            os.remove(file_path)
-            file_deleted = True
-        
+        if file_path.exists(): os.remove(file_path)
         search_engine.delete_document(filename)
-
-        if file_deleted:
-            return {"status": "success", "message": f"Deleted {filename} from disk and memory."}
-        else:
-            return {"status": "success", "message": f"Cleaned {filename} from memory (file was already gone)."}
-
+        return {"status": "success", "message": f"Deleted {filename}"}
     except Exception as e:
-        logger.error(f"Delete error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/scan")
 async def scan_documents_folder():
     files = [f for f in DOCS_FOLDER.iterdir() if f.is_file()]
-    indexed_count = 0
+    count = 0
     for file_path in files:
         if file_path.suffix.lower() in ['.pdf', '.png', '.jpg', '.jpeg']:
-            if process_file(file_path):
-                indexed_count += 1
-    
-    return {"status": "success", "message": f"Rescanned folder. Indexed {indexed_count} documents."}
+            if process_file(file_path): count += 1
+    return {"status": "success", "message": f"Rescanned. Indexed {count}."}
 
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_documents(query: SearchQuery):
+    # 1. Search
     results = search_engine.search(query=query.query, n_results=query.limit)
-    response = []
-    for r in results:
-        meta = r['metadata']
-        response.append(SearchResult(
-            id=r['id'],
-            title=meta.get('title', 'Untitled'),
-            content=r['document'],
-            source_url=meta.get('source_url', '#'),
-            date=meta.get('date', 'N/A'),
-            relevance_score=r['relevance_score'],
-            category=meta.get('category', 'General')
-        ))
-    return response
+    response_items = []
+    
+    # 2. Extract Answers (Parallel)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = []
+        for r in results:
+            if len(futures) < 3: 
+                futures.append(executor.submit(get_ai_extraction, r['document'], query.query))
+            else:
+                futures.append(None)
+        
+        for i, r in enumerate(results):
+            meta = r['metadata']
+            extracted = None
+            if i < len(futures) and futures[i] is not None:
+                extracted = futures[i].result()
+
+            response_items.append(SearchResult(
+                id=r['id'],
+                title=meta.get('title', 'Untitled'),
+                content=r['document'],
+                source_url=meta.get('source_url', '#'),
+                date=meta.get('date', 'N/A'),
+                relevance_score=r['relevance_score'],
+                category=meta.get('category', 'General'),
+                extracted_answer=extracted 
+            ))
+            
+    return response_items
 
 @app.post("/api/chat")
 async def chat_with_data(query: ChatQuery):
     results = search_engine.search(query=query.question, n_results=5)
-    if not results:
-        return {"answer": "I couldn't find relevant documents."}
-        
-    context_text = "\n\n".join([f"Source ({r['metadata'].get('title')}): {r['document']}" for r in results])
-    prompt = f"Context:\n{context_text}\n\nQuestion: {query.question}\n\nAnswer (be direct and cite the source name):"
-    
+    if not results: return {"answer": "No relevant info found."}
+    context = "\n\n".join([f"Source: {r['document']}" for r in results])
     try:
-        response = model.generate_content(prompt)
-        return {"answer": response.text, "sources": [r['metadata'] for r in results]}
+        response = model.generate_content(f"Context:\n{context}\n\nQuestion: {query.question}")
+        return {"answer": response.text, "sources": []}
     except:
-        return {"answer": "AI Service Error", "sources": []}
+        return {"answer": "AI Error", "sources": []}
 
 if __name__ == "__main__":
     uvicorn.run("backend_main:app", host="0.0.0.0", port=8000, reload=True)
