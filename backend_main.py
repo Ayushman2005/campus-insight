@@ -89,19 +89,15 @@ def calculate_smart_age(text: str) -> Optional[str]:
     try:
         current_year = datetime.now().year
         
-        # 1. Look for years like 2000-2010 (common for students)
-        # matches "2004" in "ayushman2004@gmail.com" or just "2004"
         year_matches = re.findall(r'(199\d|200\d|201\d)', text)
         
         possible_ages = []
         for year_str in year_matches:
             y = int(year_str)
-            # Filter unlikely years (e.g. current year or graduation years like 2027)
             if 1980 < y < (current_year - 15): 
                 possible_ages.append(current_year - y)
         
         if possible_ages:
-            # Return the most likely age (max of reasonable ages found)
             return str(max(possible_ages))
             
         return None
@@ -111,13 +107,11 @@ def calculate_smart_age(text: str) -> Optional[str]:
 def get_ai_extraction(text: str, query: str) -> str:
     """Uses Gemini to intelligently extract specific data points."""
     
-    # 1. PYTHON MATH FALLBACK (Fast & Accurate for Age)
     if "age" in query.lower():
         math_age = calculate_smart_age(text)
         if math_age:
             return math_age
 
-    # 2. GENERATIVE AI FALLBACK
     try:
         current_year = datetime.now().year
         prompt = f"""
