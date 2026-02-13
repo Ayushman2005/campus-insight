@@ -368,7 +368,11 @@ MIT License - feel free to use for educational purposes
 
 ## 🏆 Team
 
-Built for [Hackathon Name] - PS2: Digital Archaeology Challenge
+Built for GDG - Techsprint 2026 - PS2: Digital Archaeology Challenge
+
+1. KAUSHIK MOHANTY
+2. NILAMANI KUNDU
+3. DEEPAK KUMAR DAS
 
 **Good luck with your hackathon! 🚀**
 
