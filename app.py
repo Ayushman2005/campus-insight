@@ -82,6 +82,10 @@ def extract_date_from_text(text: str) -> str:
             return match.group(0)
     return datetime.now().strftime("%Y-%m-%d")
 
+@app.get("/")
+def read_root():
+    return {"status": "API running"}
+
 def calculate_smart_age(text: str) -> Optional[str]:
     """
     Python Fallback: If no explicit DOB, look for birth years in text or emails.
@@ -304,4 +308,4 @@ async def chat_with_data(query: ChatQuery):
         return {"answer": "AI Error", "sources": []}
 
 if __name__ == "__main__":
-    uvicorn.run("backend_main:app", host="0.0.0.0", port=8000, reload=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
