@@ -28,7 +28,7 @@ TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-app = FastAPI(title="Campus Insight API")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -83,8 +83,8 @@ def extract_date_from_text(text: str) -> str:
     return datetime.now().strftime("%Y-%m-%d")
 
 @app.get("/")
-def read_root():
-    return {"status": "API running"}
+def root():
+    return {"message": "FastAPI running on Vercel"}
 
 def calculate_smart_age(text: str) -> Optional[str]:
     """
