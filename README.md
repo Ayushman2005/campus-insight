@@ -374,8 +374,6 @@ Built for GDG - Techsprint 2026 - PS2: Digital Archaeology Challenge
 2. NILAMANI KUNDU
 3. DEEPAK KUMAR DAS
 
-**Good luck with your hackathon! 🚀**
-
 ---
 
 ## 💡 Tips for Success
