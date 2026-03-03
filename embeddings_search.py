@@ -4,6 +4,7 @@ import uuid
 
 class SemanticSearchEngine:
     def __init__(self):
+        # Clean, standard initialization
         self.client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = self.client.get_or_create_collection(name="campus_docs")
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -26,7 +27,6 @@ class SemanticSearchEngine:
             documents=chunks,
             metadatas=metadatas
         )
-        print(f"Indexed {len(chunks)} chunks for {metadata['title']}")
 
     def search(self, query: str, n_results: int = 5, filters: dict = None):
         query_embedding = self.model.encode([query]).tolist()
@@ -53,7 +53,6 @@ class SemanticSearchEngine:
 
     def delete_document(self, filename: str):
         target_url = f"http://localhost:8000/files/{filename}"
-        print(f"Deleting vectors for: {target_url}")
         self.collection.delete(
             where={"source_url": target_url}
         )

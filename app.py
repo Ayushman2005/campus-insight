@@ -1,10 +1,12 @@
 import os
 import re
 import shutil
-import asyncio
+import traceback
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -22,38 +24,58 @@ from campus_scraper import scrape_website
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") 
 TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
-genai.configure(api_key=GEMINI_API_KEY)
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 DOCS_FOLDER = Path("documents")
 DOCS_FOLDER.mkdir(exist_ok=True)
-app.mount("/files", StaticFiles(directory=DOCS_FOLDER), name="documents")
 
 ocr_processor = OCRProcessor()
 search_engine = SemanticSearchEngine()
 scheduler = BackgroundScheduler()
 
-# --- DATA MODELS ---
+def scheduled_scraper_job():
+    new_files = scrape_website(TARGET_WEBSITE, DOCS_FOLDER)
+    if new_files:
+        for filename in new_files:
+            process_file(DOCS_FOLDER / filename)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up Background Scheduler...")
+    scheduler.add_job(scheduled_scraper_job, 'interval', hours=1)
+    scheduler.start()
+    
+    yield
+    
+    logger.info("Shutting down Background Scheduler...")
+    scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/files", StaticFiles(directory=DOCS_FOLDER), name="documents")
+
 class SearchQuery(BaseModel):
     query: str
     filters: Optional[dict] = None
     limit: int = 5
-
-class ChatQuery(BaseModel):
-    question: str
 
 class SearchResult(BaseModel):
     id: str
@@ -68,8 +90,6 @@ class SearchResult(BaseModel):
 class ScrapeRequest(BaseModel):
     url: str
 
-# --- HELPERS ---
-
 def extract_date_from_text(text: str) -> str:
     patterns = [
         r'\d{2}/\d{2}/\d{4}',
@@ -82,40 +102,26 @@ def extract_date_from_text(text: str) -> str:
             return match.group(0)
     return datetime.now().strftime("%Y-%m-%d")
 
-@app.get("/")
-def root():
-    return {"message": "FastAPI running on Vercel"}
-
 def calculate_smart_age(text: str) -> Optional[str]:
-    """
-    Python Fallback: If no explicit DOB, look for birth years in text or emails.
-    """
     try:
         current_year = datetime.now().year
-        
         year_matches = re.findall(r'(199\d|200\d|201\d)', text)
-        
         possible_ages = []
         for year_str in year_matches:
             y = int(year_str)
             if 1980 < y < (current_year - 15): 
                 possible_ages.append(current_year - y)
-        
         if possible_ages:
             return str(max(possible_ages))
-            
         return None
     except:
         return None
 
 def get_ai_extraction(text: str, query: str) -> str:
-    """Uses Gemini to intelligently extract specific data points."""
-    
     if "age" in query.lower():
         math_age = calculate_smart_age(text)
         if math_age:
             return math_age
-
     try:
         current_year = datetime.now().year
         prompt = f"""
@@ -134,7 +140,6 @@ def get_ai_extraction(text: str, query: str) -> str:
         
         if "None" in answer or len(answer) > 50: 
             return None
-        
         return answer
     except Exception:
         return None
@@ -144,7 +149,8 @@ def process_file(file_path: Path):
         logger.info(f"Processing: {file_path.name}")
         processed_data = ocr_processor.process_document(str(file_path))
         
-        if not processed_data.get('text'):
+        if not processed_data or not processed_data.get('text'):
+            logger.warning(f"No text extracted from {file_path.name}")
             return False
 
         doc_date = extract_date_from_text(processed_data['text'])
@@ -163,32 +169,16 @@ def process_file(file_path: Path):
         }
         
         search_engine.index_document(text=processed_data['text'], metadata=metadata)
+        logger.info(f"Successfully indexed {file_path.name}")
         return True
     except Exception as e:
-        logger.error(f"Error processing {file_path.name}: {e}")
+        logger.error(f"!!! Error processing {file_path.name} !!!")
+        traceback.print_exc()
         return False
-
-# --- TASKS ---
-def scheduled_scraper_job():
-    new_files = scrape_website(TARGET_WEBSITE, DOCS_FOLDER)
-    if new_files:
-        for filename in new_files:
-            process_file(DOCS_FOLDER / filename)
-
-@app.on_event("startup")
-def start_scheduler():
-    scheduler.add_job(scheduled_scraper_job, 'interval', hours=1)
-    scheduler.start()
-
-@app.on_event("shutdown")
-def shutdown_scheduler():
-    scheduler.shutdown()
-
-# --- ENDPOINTS ---
 
 @app.get("/")
 async def root():
-    return {"status": "running"}
+    return {"status": "FastAPI running on Vercel/Localhost"}
 
 @app.get("/api/stats")
 async def get_stats():
@@ -219,7 +209,8 @@ async def get_stats():
             "latency": "24ms", 
             "activity_data": activity_data
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"Stats error: {e}")
         return {"total_documents": 0, "storage_used": "0 MB", "system_health": "Error", "latency": "0ms", "activity_data": []}
 
 @app.post("/api/trigger-scrape")
@@ -237,10 +228,13 @@ async def upload_file(file: UploadFile = File(...)):
         file_path = DOCS_FOLDER / file.filename
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+            
         if process_file(file_path):
-             return {"status": "success", "message": f"Uploaded {file.filename}"}
-        return {"status": "warning", "message": "Failed to process text."}
+             return {"status": "success", "message": f"Uploaded and indexed {file.filename}"}
+        
+        raise HTTPException(status_code=422, detail="Failed to extract text or index the document. Check backend terminal.")
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/documents/{filename}")
@@ -264,11 +258,9 @@ async def scan_documents_folder():
 
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_documents(query: SearchQuery):
-    # 1. Search
     results = search_engine.search(query=query.query, n_results=query.limit)
     response_items = []
     
-    # 2. Extract Answers (Parallel)
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = []
         for r in results:
@@ -296,16 +288,5 @@ async def search_documents(query: SearchQuery):
             
     return response_items
 
-@app.post("/api/chat")
-async def chat_with_data(query: ChatQuery):
-    results = search_engine.search(query=query.question, n_results=5)
-    if not results: return {"answer": "No relevant info found."}
-    context = "\n\n".join([f"Source: {r['document']}" for r in results])
-    try:
-        response = model.generate_content(f"Context:\n{context}\n\nQuestion: {query.question}")
-        return {"answer": response.text, "sources": []}
-    except:
-        return {"answer": "AI Error", "sources": []}
-
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)
