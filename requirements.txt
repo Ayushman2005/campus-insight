@@ -50,6 +50,17 @@ httpx==0.26.0
 loguru==0.7.2
 
 gunicorn==20.1.0
-
 fastapi
 uvicorn
+python-multipart
+pytesseract
+pdfplumber
+Pillow
+sentence-transformers
+numpy
+torch
+chromadb
+google-generativeai
+apscheduler
+beautifulsoup4
+requests
