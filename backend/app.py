@@ -160,6 +160,7 @@ def process_file(file_path: Path):
         backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:5000")
         metadata = {
             "title": file_path.stem,
+            "filename": file_path.name,
             "source_url": f"{backend_url}/files/{file_path.name}",
             "date": doc_date,
             "category": category

@@ -3,6 +3,7 @@ OCR Processor Module
 Handles text extraction from PDFs and images using Tesseract
 """
 
+import os
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 import pdf2image
@@ -107,8 +108,8 @@ class OCRProcessor:
     def extract_text_from_pdf(self, pdf_path: str, dpi: int = 300) -> str:
         try:
             # Convert PDF to images
-            poppler_path = r"C:\Program Files\Poppler\Library\bin" 
-
+            # Poppler path is only needed on Windows for local development
+            poppler_path = r"C:\Program Files\Poppler\Library\bin" if os.name == 'nt' else None
             images = pdf2image.convert_from_path(pdf_path, dpi=dpi, poppler_path=poppler_path)
             
             all_text = []

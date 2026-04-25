@@ -52,7 +52,7 @@ class SemanticSearchEngine:
         return self.collection.count()
 
     def delete_document(self, filename: str):
-        target_url = f"http://localhost:8000/files/{filename}"
+        # Search by the filename metadata field for robustness across environments
         self.collection.delete(
-            where={"source_url": target_url}
+            where={"filename": filename}
         )
