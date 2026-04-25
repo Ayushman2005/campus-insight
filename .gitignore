@@ -1,8 +1,8 @@
 # Python
-__pycache__/
-*.py[cod]
-venv/
-.env
+backend/__pycache__/
+backend/*.py[cod]
+backend/venv/
+backend/.env
 
 # Node/React
 frontend/node_modules/
@@ -10,8 +10,8 @@ frontend/dist/
 .DS_Store
 
 # Database & Files
-chroma_db/
-documents/
+backend/chroma_db/
+backend/documents/
 # Logs
 logs
 *.log
