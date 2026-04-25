@@ -37,3 +37,10 @@ dist-ssr
 *.sln
 *.sw?
 Digital_Archaeology_Implementation_Plan.docx
+
+runtime.txt
+
+backend/.venv
+
+run_backend.bat
+run_frontend.bat
