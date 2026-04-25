@@ -156,9 +156,11 @@ def process_file(file_path: Path):
         elif "exam" in text_lower: category = "Exams"
         elif "fee" in text_lower: category = "Fees"
 
+        # Use an environment variable for the backend URL, defaulting to local
+        backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:5000")
         metadata = {
             "title": file_path.stem,
-            "source_url": f"http://localhost:8000/files/{file_path.name}",
+            "source_url": f"{backend_url}/files/{file_path.name}",
             "date": doc_date,
             "category": category
         }
@@ -173,7 +175,7 @@ def process_file(file_path: Path):
 
 @app.get("/")
 async def root():
-    return {"status": "FastAPI running on Vercel/Localhost"}
+    return {"status": "FastAPI running on Render"}
 
 @app.get("/api/stats")
 async def get_stats():

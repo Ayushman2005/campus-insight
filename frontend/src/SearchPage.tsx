@@ -10,6 +10,8 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, Legend 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+// --- CONSTANTS ---
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // --- TYPES ---
 interface SearchResult {
@@ -155,7 +157,7 @@ const SearchPage: React.FC = () => {
   const fetchStats = useCallback(async () => {
     const start = performance.now();
     try {
-      const response = await fetch('http://localhost:5000/api/stats');
+      const response = await fetch(`${API_BASE_URL}/api/stats`);
       if (!response.ok) return; 
       const data = await response.json();
       const end = performance.now();
@@ -213,7 +215,7 @@ const SearchPage: React.FC = () => {
     setShowScrapeModal(false);
     addNotification('success', 'Scraper started. Check back soon.');
     try {
-      await fetch('http://localhost:5000/api/trigger-scrape', {
+      await fetch(`${API_BASE_URL}/api/trigger-scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: scrapeUrl })
@@ -226,7 +228,7 @@ const SearchPage: React.FC = () => {
   const handleScan = async () => {
     setScanning(true);
     try {
-      const response = await fetch('http://localhost:5000/api/scan', { method: 'POST' });
+      const response = await fetch(`${API_BASE_URL}/api/scan`, { method: 'POST' });
       const data = await response.json();
       if (data.status === 'success') {
         addNotification('success', data.message);
@@ -275,7 +277,7 @@ const SearchPage: React.FC = () => {
     await new Promise(resolve => setTimeout(resolve, 600));
 
     try {
-      const response = await fetch('http://localhost:5000/api/search', {
+      const response = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: searchTerm, limit: 15 })
@@ -304,7 +306,7 @@ const SearchPage: React.FC = () => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-            const response = await fetch('http://localhost:5000/api/upload', {
+            const response = await fetch(`${API_BASE_URL}/api/upload`, {
                 method: 'POST',
                 body: formData
             });
@@ -352,7 +354,7 @@ const SearchPage: React.FC = () => {
     if (!filename) return;
 
     try {
-      const response = await fetch(`http://localhost5000/api/documents/${filename}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/api/documents/${filename}`, { method: 'DELETE' });
       if (response.ok) {
         addNotification('success', 'Deleted.');
         setResults(prev => prev.filter(r => r.source_url !== sourceUrl));
