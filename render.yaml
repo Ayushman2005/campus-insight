@@ -12,3 +12,5 @@ services:
         sync: false # Set this to your Render URL after first deploy
       - key: CORS_ORIGINS
         value: "*"
+      - key: PYTHON_VERSION
+        value: 3.11.10

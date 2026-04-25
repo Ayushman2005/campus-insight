@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import logging
-import google.generativeai as genai
+from google import genai
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ocr_processor import OCRProcessor
@@ -28,8 +28,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
 
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+    client = genai.Client(api_key=GEMINI_API_KEY)
+else:
+    client = None
 
 DOCS_FOLDER = Path("documents")
 DOCS_FOLDER.mkdir(exist_ok=True)
@@ -130,7 +131,13 @@ def get_ai_extraction(text: str, query: str) -> str:
         - Return ONLY the result (e.g. "21"). No text.
         - If not found, return "None".
         """
-        response = model.generate_content(prompt)
+        if not client:
+            return None
+            
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt
+        )
         answer = response.text.strip().replace('"', '').replace("'", "").replace(".", "")
         
         if "None" in answer or len(answer) > 50: 
