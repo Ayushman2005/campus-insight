@@ -40,10 +40,11 @@ search_engine = SemanticSearchEngine()
 scheduler = BackgroundScheduler()
 
 def scheduled_scraper_job():
-    new_files = scrape_website(TARGET_WEBSITE, DOCS_FOLDER)
+    existing_filenames = search_engine.get_all_filenames()
+    new_files = scrape_website(TARGET_WEBSITE, existing_filenames)
     if new_files:
-        for filename in new_files:
-            process_file(DOCS_FOLDER / filename)
+        for file_data in new_files:
+            process_memory_file(file_data['filename'], file_data['content'], file_data['url'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -146,6 +147,39 @@ def get_ai_extraction(text: str, query: str) -> str:
     except Exception:
         return None
 
+def process_memory_file(filename: str, file_bytes: bytes, source_url: str):
+    try:
+        logger.info(f"Processing in memory: {filename}")
+        processed_data = ocr_processor.process_document_bytes(file_bytes, filename)
+        
+        if not processed_data or not processed_data.get('text'):
+            logger.warning(f"No text extracted from {filename}")
+            return False
+
+        doc_date = extract_date_from_text(processed_data['text'])
+        
+        category = "General"
+        text_lower = processed_data['text'].lower()
+        if "resume" in text_lower or "cv" in text_lower: category = "Resume"
+        elif "exam" in text_lower: category = "Exams"
+        elif "fee" in text_lower: category = "Fees"
+
+        metadata = {
+            "title": Path(filename).stem,
+            "filename": filename,
+            "source_url": source_url,
+            "date": doc_date,
+            "category": category
+        }
+        
+        search_engine.index_document(text=processed_data['text'], metadata=metadata)
+        logger.info(f"Successfully indexed {filename}")
+        return True
+    except Exception as e:
+        logger.error(f"!!! Error processing {filename} !!!")
+        traceback.print_exc()
+        return False
+
 def process_file(file_path: Path):
     try:
         logger.info(f"Processing: {file_path.name}")
@@ -189,53 +223,39 @@ async def root():
 async def get_stats():
     try:
         doc_count = search_engine.get_document_count()
-        total_size = sum(f.stat().st_size for f in DOCS_FOLDER.glob('**/*') if f.is_file())
-        storage_mb = round(total_size / (1024 * 1024), 2)
+        storage_mb = "In-Memory"
         
-        activity_counts = {"Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0}
+        # Activity data could be fetched from DB, but we keep a dummy for now since we no longer track local files
         days_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        
-        for file_path in DOCS_FOLDER.iterdir():
-            if file_path.is_file():
-                try:
-                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                    day_name = mtime.strftime("%a")
-                    if day_name in activity_counts:
-                        activity_counts[day_name] += 1
-                except Exception:
-                    continue
-
-        activity_data = [{"name": day, "files": activity_counts[day]} for day in days_order]
+        activity_data = [{"name": day, "files": 0} for day in days_order]
         
         return {
             "total_documents": doc_count,
-            "storage_used": f"{storage_mb} MB",
+            "storage_used": storage_mb,
             "system_health": "100%",
             "latency": "24ms", 
             "activity_data": activity_data
         }
     except Exception as e:
         logger.error(f"Stats error: {e}")
-        return {"total_documents": 0, "storage_used": "0 MB", "system_health": "Error", "latency": "0ms", "activity_data": []}
+        return {"total_documents": 0, "storage_used": "In-Memory", "system_health": "Error", "latency": "0ms", "activity_data": []}
 
 @app.post("/api/trigger-scrape")
 async def manual_scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
     def scrape_and_index():
-        new_files = scrape_website(request.url, DOCS_FOLDER)
-        for filename in new_files:
-            process_file(DOCS_FOLDER / filename)
+        existing_filenames = search_engine.get_all_filenames()
+        new_files = scrape_website(request.url, existing_filenames)
+        for file_data in new_files:
+            process_memory_file(file_data['filename'], file_data['content'], file_data['url'])
     background_tasks.add_task(scrape_and_index)
     return {"status": "success"}
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        file_path = DOCS_FOLDER / file.filename
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        if process_file(file_path):
-             return {"status": "success", "message": f"Uploaded and indexed {file.filename}"}
+        file_bytes = await file.read()
+        if process_memory_file(file.filename, file_bytes, source_url="#"):
+             return {"status": "success", "message": f"Uploaded and indexed {file.filename} in memory"}
         
         raise HTTPException(status_code=422, detail="Failed to extract text or index the document. Check backend terminal.")
     except Exception as e:

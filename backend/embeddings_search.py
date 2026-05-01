@@ -51,6 +51,19 @@ class SemanticSearchEngine:
     def get_document_count(self):
         return self.collection.count()
 
+    def get_all_filenames(self):
+        # Get all documents to extract unique filenames
+        try:
+            result = self.collection.get(include=['metadatas'])
+            filenames = set()
+            if result and result.get('metadatas'):
+                for meta in result['metadatas']:
+                    if meta and 'filename' in meta:
+                        filenames.add(meta['filename'])
+            return list(filenames)
+        except Exception:
+            return []
+
     def delete_document(self, filename: str):
         # Search by the filename metadata field for robustness across environments
         self.collection.delete(

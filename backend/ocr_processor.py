@@ -4,6 +4,7 @@ Handles text extraction from PDFs and images using Tesseract
 """
 
 import os
+import io
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 import pdf2image
@@ -53,13 +54,10 @@ class OCRProcessor:
             
         return "\n".join(cleaned_lines)
 
-    def preprocess_image(self, image_path: str) -> Image:
+    def preprocess_image_obj(self, img: Image.Image) -> Image.Image:
         """
-        Preprocess image for better OCR accuracy
+        Preprocess Image object for better OCR accuracy
         """
-        # Load image
-        img = Image.open(image_path)
-        
         # 1. Resize: Scale up 2x. Tesseract works better on larger text.
         width, height = img.size
         img = img.resize((width * 2, height * 2), Image.Resampling.LANCZOS)
@@ -68,7 +66,6 @@ class OCRProcessor:
         img = img.convert('L')
         
         # 3. Increase Contrast / Binarization
-        # This turns light gray background patterns into pure white (ignoring them)
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(2.0)
         
@@ -76,17 +73,20 @@ class OCRProcessor:
         img = img.point(lambda x: 0 if x < 140 else 255, '1')
         
         return img
+
+    def preprocess_image(self, image_path: str) -> Image:
+        """
+        Preprocess image from path (Legacy method)
+        """
+        img = Image.open(image_path)
+        return self.preprocess_image_obj(img)
     
-    def extract_text_from_image(self, image_path: str, preprocess: bool = True) -> str:
+    def extract_text_from_image_obj(self, img: Image.Image, preprocess: bool = True) -> str:
         try:
             if preprocess:
-                img = self.preprocess_image(image_path)
-            else:
-                img = Image.open(image_path)
+                img = self.preprocess_image_obj(img)
             
             # --- KEY FIX HERE ---
-            # --psm 3: Fully automatic page segmentation (handles columns/complex layouts)
-            # --oem 3: Default OCR Engine Mode
             custom_config = r'--oem 3 --psm 3'
             
             text = pytesseract.image_to_string(
@@ -95,40 +95,79 @@ class OCRProcessor:
                 config=custom_config
             )
             
-            # Clean the "garbage" output
             clean_text = self.cleanup_text(text)
-            
-            logger.info(f"Successfully extracted text from {image_path}")
             return clean_text.strip()
         
         except Exception as e:
+            logger.error(f"Error extracting text from image object: {str(e)}")
+            return ""
+
+    def extract_text_from_image_bytes(self, image_bytes: bytes, preprocess: bool = True) -> str:
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            return self.extract_text_from_image_obj(img, preprocess)
+        except Exception as e:
+            logger.error(f"Error loading image from bytes: {str(e)}")
+            return ""
+
+    def extract_text_from_image(self, image_path: str, preprocess: bool = True) -> str:
+        try:
+            img = Image.open(image_path)
+            res = self.extract_text_from_image_obj(img, preprocess)
+            logger.info(f"Successfully extracted text from {image_path}")
+            return res
+        except Exception as e:
             logger.error(f"Error extracting text from {image_path}: {str(e)}")
+            return ""
+
+    def extract_text_from_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 300) -> str:
+        try:
+            poppler_path = r"C:\Program Files\Poppler\Library\bin" if os.name == 'nt' else None
+            images = pdf2image.convert_from_bytes(pdf_bytes, dpi=dpi, poppler_path=poppler_path)
+            
+            all_text = []
+            for image in images:
+                page_text = self.extract_text_from_image_obj(image, preprocess=True)
+                all_text.append(page_text)
+                
+            return "\n\n".join(all_text)
+        
+        except Exception as e:
+            logger.error(f"Error extracting text from PDF bytes: {str(e)}")
             return ""
     
     def extract_text_from_pdf(self, pdf_path: str, dpi: int = 300) -> str:
         try:
-            # Convert PDF to images
-            # Poppler path is only needed on Windows for local development
             poppler_path = r"C:\Program Files\Poppler\Library\bin" if os.name == 'nt' else None
             images = pdf2image.convert_from_path(pdf_path, dpi=dpi, poppler_path=poppler_path)
             
             all_text = []
-            for i, image in enumerate(images):
-                temp_path = f"temp_page_{i}.png"
-                image.save(temp_path, 'PNG')
-                
-                # Extract text
-                page_text = self.extract_text_from_image(temp_path, preprocess=True)
+            for image in images:
+                page_text = self.extract_text_from_image_obj(image, preprocess=True)
                 all_text.append(page_text)
                 
-                # Clean up
-                Path(temp_path).unlink()
-            
             return "\n\n".join(all_text)
         
         except Exception as e:
             logger.error(f"Error extracting text from PDF {pdf_path}: {str(e)}")
             return ""
+
+    def process_document_bytes(self, file_bytes: bytes, filename: str) -> dict:
+        filename_path = Path(filename)
+        
+        if filename_path.suffix.lower() == '.pdf':
+            text = self.extract_text_from_pdf_bytes(file_bytes)
+        else:
+            text = self.extract_text_from_image_bytes(file_bytes)
+        
+        word_count = len(text.split())
+        
+        return {
+            'text': text,
+            'filename': filename,
+            'format': filename_path.suffix.lower(),
+            'word_count': word_count
+        }
     
     def process_document(self, file_path: str) -> dict:
         file_path = Path(file_path)
