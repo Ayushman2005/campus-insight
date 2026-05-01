@@ -102,6 +102,12 @@ const SearchPage: React.FC = () => {
   const [scanning, setScanning] = useState(false);
   const [scrapeUrl, setScrapeUrl] = useState('');
   const [showScrapeModal, setShowScrapeModal] = useState(false);
+  const [scrapeOptions, setScrapeOptions] = useState({
+    extract_text: true,
+    extract_pdfs: true,
+    extract_images: false,
+    max_links: 10
+  });
   
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
@@ -124,11 +130,7 @@ const SearchPage: React.FC = () => {
     show: false, type: 'success', message: ''
   });
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('app_theme');
-    return saved ? saved === 'dark' : true;
-  });
-
+  const isDarkMode = false;
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -142,12 +144,6 @@ const SearchPage: React.FC = () => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light');
-    if (isDarkMode) document.body.classList.add('dark');
-    else document.body.classList.remove('dark');
-  }, [isDarkMode]);
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('campus_search_history');
@@ -213,12 +209,15 @@ const SearchPage: React.FC = () => {
   const handleScrape = async () => {
     if (!scrapeUrl) return;
     setShowScrapeModal(false);
-    addNotification('success', 'Scraper started. Check back soon.');
+    addNotification('success', 'Dynamic Scraper started. Check back soon.');
     try {
       await fetch(`${API_BASE_URL}/api/trigger-scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: scrapeUrl })
+        body: JSON.stringify({ 
+            url: scrapeUrl,
+            ...scrapeOptions
+        })
       });
     } catch (error) {
         addNotification('error', 'Scraper failed to start.');
@@ -419,10 +418,10 @@ const SearchPage: React.FC = () => {
   };
 
   const pieData = [
-    { name: 'Exams', value: 35, color: '#3b82f6' },
-    { name: 'Fees', value: 25, color: '#10b981' },
-    { name: 'Hostel', value: 20, color: '#f59e0b' },
-    { name: 'General', value: 20, color: '#6366f1' },
+    { name: 'Exams', value: 35, color: '#6366f1' }, // primary
+    { name: 'Fees', value: 25, color: '#ec4899' }, // secondary
+    { name: 'Hostel', value: 20, color: '#8b5cf6' },
+    { name: 'General', value: 20, color: '#10b981' },
   ];
 
   const defaultBarData = [
@@ -431,22 +430,29 @@ const SearchPage: React.FC = () => {
   ];
 
   const theme = {
-    bg: isDarkMode ? "bg-slate-950" : "bg-gray-50",
-    text: isDarkMode ? "text-slate-200" : "text-gray-700",
-    header: isDarkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-gray-200",
-    card: isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200 shadow-sm",
-    statCard: isDarkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-gray-200 shadow-sm",
-    inputBg: isDarkMode ? "bg-slate-900/50 border-slate-700 text-white placeholder-slate-400" : "bg-white/50 border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm",
-    progressBarBg: isDarkMode ? "bg-slate-800" : "bg-gray-200",
-    divider: isDarkMode ? "border-slate-800" : "border-gray-200",
-    iconBtn: isDarkMode ? "text-slate-400 hover:text-white hover:bg-slate-800" : "text-gray-500 hover:text-blue-600 hover:bg-gray-100",
-    dropdown: isDarkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-200 shadow-xl",
-    dropdownItem: isDarkMode ? "hover:bg-slate-800/50 border-slate-800" : "hover:bg-gray-50 border-gray-100",
-    sidebar: isDarkMode ? "bg-slate-950 border-slate-800" : "bg-white border-gray-200",
+    bg: "bg-transparent", // the body now handles the global gradient
+    text: isDarkMode ? "text-slate-200" : "text-gray-800",
+    header: "glass sticky top-0 z-20 px-4 md:px-6 py-4 flex justify-between items-center rounded-b-3xl mb-4 mx-2 md:mx-4",
+    card: "glass rounded-2xl transition-all duration-300 hover:shadow-2xl",
+    statCard: "glass-panel rounded-xl flex items-center gap-4 transition-all duration-300 hover:shadow-xl",
+    inputBg: isDarkMode ? "bg-slate-900/40 border-slate-700/50 text-white placeholder-slate-400" : "bg-white/40 border-white/50 text-gray-900 placeholder-gray-500 shadow-sm",
+    progressBarBg: isDarkMode ? "bg-slate-800/50" : "bg-white/50",
+    divider: isDarkMode ? "border-slate-800/50" : "border-white/50",
+    iconBtn: isDarkMode ? "text-slate-300 hover:text-white hover:bg-slate-800/50" : "text-gray-600 hover:text-indigo-600 hover:bg-white/50",
+    dropdown: "glass absolute right-0 mt-3 w-72 md:w-80 rounded-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2",
+    dropdownItem: isDarkMode ? "hover:bg-slate-800/50 border-slate-700/50" : "hover:bg-white/50 border-white/50",
+    sidebar: "glass fixed md:relative inset-y-0 left-0 z-40 flex flex-col overflow-hidden w-[260px] m-2 rounded-2xl md:my-4 md:ml-4",
   };
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-500 flex ${theme.bg} ${theme.text}`} onClick={() => setShowDropdown(false)}>
+    <div className={`min-h-screen font-sans transition-colors duration-500 flex ${theme.bg} ${theme.text} relative overflow-hidden`} onClick={() => setShowDropdown(false)}>
+      
+      {/* Animated Background Blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] bg-purple-500 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-[80px] opacity-30 dark:opacity-20 animate-blob"></div>
+        <div className="absolute top-[10%] right-[-10%] w-[35vw] h-[35vw] max-w-[400px] max-h-[400px] bg-indigo-500 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-[80px] opacity-30 dark:opacity-20 animate-blob" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-[-10%] left-[20%] w-[45vw] h-[45vw] max-w-[600px] max-h-[600px] bg-pink-500 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-[80px] opacity-30 dark:opacity-20 animate-blob" style={{ animationDelay: '4s' }}></div>
+      </div>
       
       <AnimatePresence>
         {isMobile && isSidebarOpen && (
@@ -454,15 +460,15 @@ const SearchPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <motion.aside initial={false} animate={{ x: isSidebarOpen ? 0 : (isMobile ? '-100%' : 0), width: !isMobile && !isSidebarOpen ? 0 : 260, opacity: !isMobile && !isSidebarOpen ? 0 : 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className={`fixed md:relative inset-y-0 left-0 z-40 border-r flex flex-col overflow-hidden ${theme.sidebar}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-opacity-10 border-gray-500">
+      <motion.aside initial={false} animate={{ x: isSidebarOpen ? 0 : (isMobile ? '-100%' : 0), width: !isMobile && !isSidebarOpen ? 0 : 260, opacity: !isMobile && !isSidebarOpen ? 0 : 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className={`z-40 ${theme.sidebar}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-white/20 dark:border-slate-800/50">
            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20"><GraduationCap className="text-white" size={20} /></div>
-           <h1 className="font-bold text-lg tracking-tight whitespace-nowrap">Campus Insight</h1>
+           <h1 className="font-heading font-bold text-xl tracking-tight whitespace-nowrap">Campus Insight</h1>
         </div>
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             <div className="space-y-2 mb-8">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('dashboard'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}><LayoutGrid size={18} /> Dashboard</motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('about'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'about' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}><Cpu size={18} /> System Info</motion.button>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('dashboard'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}><LayoutGrid size={18} /> Dashboard</motion.button>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('about'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'about' ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}><Cpu size={18} /> System Info</motion.button>
             </div>
             <div className="mb-2 px-4 flex justify-between items-center text-xs font-semibold text-slate-500 uppercase tracking-wider"><span>Recent History</span>{searchHistory.length > 0 && <button onClick={clearHistory} className="hover:text-red-500 transition-colors">Clear</button>}</div>
             <div className="space-y-1">
@@ -476,11 +482,10 @@ const SearchPage: React.FC = () => {
       </motion.aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className={`backdrop-blur-xl border-b sticky top-0 z-20 px-4 md:px-6 py-4 flex justify-between items-center ${theme.header}`}>
-            <div className="flex items-center gap-4"><button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}</button><h2 className="font-bold text-lg tracking-tight hidden md:block">{currentView === 'dashboard' ? 'Dashboard' : 'System Architecture'}</h2></div>
+        <header className={`${theme.header}`}>
+            <div className="flex items-center gap-4"><button className={`p-2 rounded-xl transition-colors ${theme.iconBtn}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}</button><h2 className="font-heading font-bold text-2xl tracking-tight hidden md:block text-gradient">{currentView === 'dashboard' ? 'Dashboard' : 'System Architecture'}</h2></div>
             <div className="flex items-center gap-2 md:gap-3">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}><Globe size={14} className="text-emerald-500" /> <span className="hidden md:inline">Live Scrape</span></motion.button>
-                <motion.button whileTap={{ rotate: 180 }} onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-slate-400 hover:text-white transition-colors">{isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</motion.button>
                 <motion.button whileTap={{ rotate: 360 }} onClick={handleScan} disabled={scanning} className={`p-2 rounded-full text-slate-400 hover:text-blue-500 transition-colors ${scanning ? 'animate-spin' : ''}`}><RefreshCw size={20} /></motion.button>
                 <div className="relative">
                   <motion.button whileHover={{ scale: 1.1 }} onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }} className={`p-2 rounded-full relative transition-colors ${theme.iconBtn}`}><Bell size={20} />{notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>}</motion.button>
@@ -492,13 +497,82 @@ const SearchPage: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth custom-scrollbar relative">
             <div className="max-w-6xl mx-auto w-full">
                 {currentView === 'about' && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                        <div className={`p-8 rounded-2xl border ${theme.card} relative overflow-hidden`}><div className="relative z-10"><h2 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>System Architecture</h2><p className="text-slate-500 text-lg max-w-2xl">Campus Insight is built on a modern, high-performance tech stack designed for speed, accuracy, and scalability.</p></div><div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none"></div></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className={`p-6 rounded-2xl border ${theme.card}`}><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Code size={24} /></div><h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Frontend</h3></div><ul className="space-y-3"><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">React 18</span><span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Core Library</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">TypeScript</span><span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Type Safety</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Tailwind CSS</span><span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Styling</span></li></ul></div>
-                            <div className={`p-6 rounded-2xl border ${theme.card}`}><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><Terminal size={24} /></div><h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Backend</h3></div><ul className="space-y-3"><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Python 3.12+</span><span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Runtime</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">FastAPI</span><span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Framework</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Uvicorn</span><span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">ASGI Server</span></li></ul></div>
-                            <div className={`p-6 rounded-2xl border ${theme.card}`}><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-purple-500/10 rounded-xl text-purple-500"><Cpu size={24} /></div><h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>AI & Intelligence</h3></div><ul className="space-y-3"><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Gemini 1.5 Flash</span><span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">LLM Engine</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Tesseract OCR</span><span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">Image to Text</span></li></ul></div>
-                            <div className={`p-6 rounded-2xl border ${theme.card}`}><div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-500/10 rounded-xl text-orange-500"><Database size={24} /></div><h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Storage</h3></div><ul className="space-y-3"><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">ChromaDB</span><span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">Vector DB</span></li><li className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"><span className="font-medium">Local File System</span><span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">Document Store</span></li></ul></div>
+                    <motion.div initial="hidden" animate="show" variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }} className="space-y-8 pb-12">
+                        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className={`p-8 rounded-2xl border ${theme.card} relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-6`}>
+                            <div className="relative z-10 flex-1">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold tracking-widest uppercase mb-4 shadow-sm border border-emerald-200">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    All Systems Operational
+                                </div>
+                                <h2 className={`font-heading text-4xl font-extrabold mb-3 text-gray-900 tracking-tight`}>System Architecture</h2>
+                                <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">Campus Insight is built on a modern, high-performance tech stack designed for speed, accuracy, and infinite scalability. Our pipeline processes documents entirely in-memory for maximum efficiency.</p>
+                            </div>
+                            <div className="relative z-10 flex gap-4 hidden sm:flex">
+                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-50 border border-indigo-100 flex items-center justify-center shadow-inner"><Server size={32} className="text-indigo-500" /></div>
+                            </div>
+                            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-indigo-500/5 to-transparent pointer-events-none"></div>
+                        </motion.div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-blue-500/10 rounded-xl text-blue-600 shadow-inner"><Code size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Frontend</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">React 18 & TS</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Core UI</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Tailwind CSS</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Glassmorphism</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Framer Motion</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Animations</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Recharts</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Analytics</span></li>
+                                </ul>
+                            </motion.div>
+                            
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-600 shadow-inner"><Terminal size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Backend System</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Python 3.12+</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Runtime</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">FastAPI</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Async API</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Uvicorn</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">ASGI Server</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">APScheduler</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Cron Jobs</span></li>
+                                </ul>
+                            </motion.div>
+                            
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-purple-500/10 rounded-xl text-purple-600 shadow-inner"><Cpu size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">AI & Intelligence</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Gemini 1.5 Flash</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">LLM Engine</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Tesseract OCR</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Vision AI</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">PDF2Image</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Rasterization</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Regex Engines</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Meta Extract</span></li>
+                                </ul>
+                            </motion.div>
+                            
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-500/10 rounded-xl text-orange-600 shadow-inner"><Database size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Storage Engine</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">ChromaDB</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Vector Space</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">In-Memory IO</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Zero-Disk</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">MiniLM Embeds</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">384-Dim Tensors</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Cosine Distance</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Search Metric</span></li>
+                                </ul>
+                            </motion.div>
+                            
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-pink-500/10 rounded-xl text-pink-600 shadow-inner"><Globe size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Data Pipeline</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">BeautifulSoup4</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">DOM Parser</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Python Requests</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">HTTP Client</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Async Workers</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">Parallel Exec</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">MIME Filters</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">Type Router</span></li>
+                                </ul>
+                            </motion.div>
+                            
+                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
+                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-rose-500/10 rounded-xl text-rose-600 shadow-inner"><Activity size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Performance</h3></div>
+                                <ul className="space-y-3 flex-1">
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">RAM Streamer</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">I/O Optimization</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Chunking Engine</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">LLM Fit</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">CORS Policy</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">Edge Security</span></li>
+                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Graceful Failover</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">Error Handling</span></li>
+                                </ul>
+                            </motion.div>
                         </div>
                     </motion.div>
                 )}
@@ -506,9 +580,9 @@ const SearchPage: React.FC = () => {
                 {currentView === 'dashboard' && (
                     <>
                     <div className="flex flex-col items-center justify-center mb-10 relative">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-32 bg-blue-500/20 dark:bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-32 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none animate-pulse-glow"></div>
                       <motion.div layout className={`w-full relative rounded-2xl border transition-all duration-300 backdrop-blur-sm z-10 ${isDragging ? 'border-blue-500 bg-blue-500/10' : theme.inputBg} ${isDarkMode ? 'border-slate-700' : 'border-gray-300'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-                        {isDragging ? (<div className="py-8 flex flex-col items-center justify-center text-blue-500 animate-pulse"><UploadCloud size={48} /><p className="mt-2 font-bold text-lg">{isMobile ? "Tap to upload" : "Drop to upload"}</p></div>) : (<form onSubmit={handleSearchForm} className="relative flex items-center overflow-hidden p-1"><div className="pl-3 md:pl-5 text-slate-400"><Search size={22} /></div><input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={isMobile ? "Search..." : "Search documents or drop files..."} className="w-full py-4 px-3 md:px-4 text-base md:text-lg bg-transparent focus:outline-none font-medium placeholder-slate-400"/><input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} /><motion.button type="button" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="p-2 mr-1 md:mr-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FilePlus size={20} /></motion.button><motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loading} className="mr-1 px-4 md:px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all text-sm md:text-base">{loading ? '...' : 'Search'}</motion.button></form>)}
+                        {isDragging ? (<div className="py-8 flex flex-col items-center justify-center text-indigo-500 animate-pulse"><UploadCloud size={48} /><p className="mt-2 font-bold text-lg">{isMobile ? "Tap to upload" : "Drop to upload"}</p></div>) : (<form onSubmit={handleSearchForm} className="relative flex items-center overflow-hidden p-1"><div className="pl-3 md:pl-5 text-slate-400"><Search size={22} /></div><input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={isMobile ? "Search..." : "Search documents or drop files..."} className="w-full py-4 px-3 md:px-4 text-base md:text-lg bg-transparent focus:outline-none font-medium placeholder-slate-400"/><input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} /><motion.button type="button" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className={`p-2 mr-1 md:mr-2 rounded-lg transition-colors ${theme.iconBtn}`}><FilePlus size={20} /></motion.button><motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loading} className="mr-1 px-4 md:px-6 py-2.5 bg-gradient-primary text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:shadow-indigo-500/20 transition-all text-sm md:text-base animate-float">{loading ? '...' : 'Search'}</motion.button></form>)}
                       </motion.div>
                     </div>
 
@@ -516,8 +590,8 @@ const SearchPage: React.FC = () => {
                       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-4">
                         <div className="flex items-center justify-between px-2 mb-2"><span className="text-sm font-medium opacity-70">Found {results.length} results</span></div>
                         {results.map((result) => (
-                          <motion.div key={result.id} variants={itemVariants} layout className={`group rounded-xl p-5 border transition-all ${theme.card} hover:border-blue-500/50 hover:shadow-lg`}>
-                            <div className="flex justify-between items-start mb-2"><h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3></div>
+                          <motion.div key={result.id} variants={itemVariants} whileHover={{ scale: 1.01, y: -4 }} layout className={`group rounded-xl p-5 border transition-all ${theme.card} hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/10`}>
+                            <div className="flex justify-between items-start mb-2"><h3 className={`font-heading text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3></div>
                             <div className="mb-4">{renderSnippet(result.content, query, result.extracted_answer)}</div>
                             <div className="flex justify-between items-center pt-2 border-t border-slate-500/10"><div className="flex items-center gap-2 text-xs text-slate-500 font-mono"><span className="p-1 rounded bg-slate-100 dark:bg-slate-800"><HardDrive size={10}/></span><span className="truncate max-w-[150px]">{result.source_url ? result.source_url.split('/').pop() : 'Unknown File'}</span></div><div className="flex gap-2"><button onClick={() => result.source_url && handleDelete(result.source_url)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={16} /></button><button onClick={() => setPreviewDoc(result)} className="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-1"><Eye size={14} /> View</button></div></div>
                           </motion.div>
@@ -527,9 +601,9 @@ const SearchPage: React.FC = () => {
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="space-y-6">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{[{ label: "Total Indexed", val: stats?.total_documents ?? 0, icon: Database, color: "text-blue-500" }, { label: "Storage Used", val: stats?.storage_used || "0 MB", icon: HardDrive, color: "text-purple-500", isString: true }, { label: "System Health", val: stats?.system_health || "Checking...", icon: Activity, color: "text-emerald-500", isString: true }, { label: "Avg Latency", val: stats?.latency || "0ms", icon: Zap, color: "text-orange-500", isString: true },].map((stat, i) => (<motion.div whileHover={{ y: -5 }} key={i} className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${theme.statCard}`}><div className={`p-3 rounded-lg bg-opacity-10 ${isDarkMode ? 'bg-white' : 'bg-black'} ${stat.color}`}><stat.icon size={20} /></div><div><div className="text-xs font-bold uppercase tracking-wider opacity-60">{stat.label}</div><div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stat.isString ? stat.val : <CountUp end={stat.val as number} />}</div></div></motion.div>))}</div>
                           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}><h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><LayoutGrid size={18} className="text-blue-500"/> Categories</h3><div className="h-48 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />)}</Pie><RechartsTooltip contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none' }} /><Legend /></PieChart></ResponsiveContainer></div></motion.div>
-                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}><h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Activity size={18} className="text-purple-500"/> Activity</h3><div className="h-48 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={stats.activity_data && stats.activity_data.length > 0 ? stats.activity_data : defaultBarData}><XAxis dataKey="name" stroke={isDarkMode ? "#64748b" : "#94a3b8"} fontSize={12} tickLine={false} axisLine={false} /><RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none' }} /><Bar dataKey="files" fill="#8b5cf6" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div></motion.div>
-                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border flex flex-col ${theme.card}`}><h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Server size={18} className="text-emerald-500"/> Live Status</h3><div className="space-y-4 mb-6"><div><div className="flex justify-between text-xs mb-1 opacity-70"><span>Database Load</span><span>45%</span></div><div className={`h-2 rounded-full w-full ${theme.progressBarBg}`}><div className="h-full rounded-full bg-blue-500 w-[45%]"></div></div></div><div><div className="flex justify-between text-xs mb-1 opacity-70"><span>API Quota</span><span>12%</span></div><div className={`h-2 rounded-full w-full ${theme.progressBarBg}`}><div className="h-full rounded-full bg-emerald-500 w-[12%]"></div></div></div></div><div className={`mt-auto p-4 rounded-xl border ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-blue-50 border-blue-100'}`}><div className="flex items-start gap-3"><HelpCircle size={18} className="text-blue-500 mt-0.5" /><div><div className={`text-sm font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Pro Tip</div><p className="text-xs opacity-70 leading-relaxed">Click 'Live Scrape' to fetch web notices.</p></div></div></div></motion.div>
+                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}><h3 className={`font-heading text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><LayoutGrid size={18} className="text-blue-500"/> Categories</h3><div className="h-48 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />)}</Pie><RechartsTooltip contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none' }} /><Legend /></PieChart></ResponsiveContainer></div></motion.div>
+                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border ${theme.card}`}><h3 className={`font-heading text-lg font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Activity size={18} className="text-purple-500"/> Activity</h3><div className="h-48 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={stats.activity_data && stats.activity_data.length > 0 ? stats.activity_data : defaultBarData}><XAxis dataKey="name" stroke={isDarkMode ? "#64748b" : "#94a3b8"} fontSize={12} tickLine={false} axisLine={false} /><RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none' }} /><Bar dataKey="files" fill="#8b5cf6" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div></motion.div>
+                            <motion.div whileHover={{ y: -5 }} className={`p-6 rounded-2xl border flex flex-col ${theme.card}`}><h3 className={`font-heading text-lg font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}><Server size={18} className="text-emerald-500"/> Live Status</h3><div className="space-y-4 mb-6"><div><div className="flex justify-between text-xs mb-1 opacity-70"><span>Database Load</span><span>45%</span></div><div className={`h-2 rounded-full w-full ${theme.progressBarBg}`}><div className="h-full rounded-full bg-blue-500 w-[45%]"></div></div></div><div><div className="flex justify-between text-xs mb-1 opacity-70"><span>API Quota</span><span>12%</span></div><div className={`h-2 rounded-full w-full ${theme.progressBarBg}`}><div className="h-full rounded-full bg-emerald-500 w-[12%]"></div></div></div></div><div className={`mt-auto p-4 rounded-xl border ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-blue-50 border-blue-100'}`}><div className="flex items-start gap-3"><HelpCircle size={18} className="text-blue-500 mt-0.5" /><div><div className={`text-sm font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Pro Tip</div><p className="text-xs opacity-70 leading-relaxed">Click 'Live Scrape' to fetch web notices.</p></div></div></div></motion.div>
                           </div>
                         </motion.div>
                     )}
@@ -544,10 +618,40 @@ const SearchPage: React.FC = () => {
       {showScrapeModal && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${theme.card}`}>
-               <h3 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Connect Website</h3>
-               <p className="text-sm opacity-70 mb-4">Enter a URL to auto-fetch PDFs and images.</p>
-               <input type="text" value={scrapeUrl} onChange={(e) => setScrapeUrl(e.target.value)} placeholder="https://college.edu/notices" className={`w-full p-3 rounded-lg border mb-6 ${theme.inputBg}`} />
-               <div className="flex justify-end gap-3">
+               <h3 className={`font-heading text-2xl font-bold mb-2 text-gray-900`}>Dynamic Web Scraper</h3>
+               <p className="text-sm opacity-70 mb-6">Extract rich text and documents directly into the semantic index.</p>
+               
+               <div className="space-y-4 mb-6">
+                 <div>
+                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target URL</label>
+                   <input type="text" value={scrapeUrl} onChange={(e) => setScrapeUrl(e.target.value)} placeholder="https://college.edu/notices" className={`w-full p-3 rounded-lg border ${theme.inputBg} focus:ring-2 focus:ring-emerald-500 outline-none transition-all`} />
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-4">
+                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                     <input type="checkbox" checked={scrapeOptions.extract_text} onChange={(e) => setScrapeOptions({...scrapeOptions, extract_text: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded" />
+                     <span className="text-sm font-semibold">Extract Page Text</span>
+                   </label>
+                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                     <input type="checkbox" checked={scrapeOptions.extract_pdfs} onChange={(e) => setScrapeOptions({...scrapeOptions, extract_pdfs: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded" />
+                     <span className="text-sm font-semibold">Download PDFs</span>
+                   </label>
+                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                     <input type="checkbox" checked={scrapeOptions.extract_images} onChange={(e) => setScrapeOptions({...scrapeOptions, extract_images: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded" />
+                     <span className="text-sm font-semibold">Download Images</span>
+                   </label>
+                 </div>
+                 
+                 <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Max Depth / Links</label>
+                        <span className="text-xs font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded">{scrapeOptions.max_links} Links</span>
+                    </div>
+                    <input type="range" min="1" max="50" value={scrapeOptions.max_links} onChange={(e) => setScrapeOptions({...scrapeOptions, max_links: parseInt(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
+                 </div>
+               </div>
+               
+               <div className="flex justify-end gap-3 pt-4 border-t">
                    <button onClick={() => setShowScrapeModal(false)} className="px-4 py-2 rounded-lg text-sm hover:bg-slate-800 transition-colors">Cancel</button>
                    <button onClick={handleScrape} className="px-4 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-colors">Start Scraper</button>
                </div>

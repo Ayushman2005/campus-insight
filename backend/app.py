@@ -86,6 +86,10 @@ class SearchResult(BaseModel):
 
 class ScrapeRequest(BaseModel):
     url: str
+    extract_pdfs: bool = True
+    extract_images: bool = True
+    extract_text: bool = True
+    max_links: int = 10
 
 def extract_date_from_text(text: str) -> str:
     patterns = [
@@ -244,7 +248,14 @@ async def get_stats():
 async def manual_scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
     def scrape_and_index():
         existing_filenames = search_engine.get_all_filenames()
-        new_files = scrape_website(request.url, existing_filenames)
+        new_files = scrape_website(
+            request.url, 
+            existing_filenames,
+            extract_pdfs=request.extract_pdfs,
+            extract_images=request.extract_images,
+            extract_text=request.extract_text,
+            max_links=request.max_links
+        )
         for file_data in new_files:
             process_memory_file(file_data['filename'], file_data['content'], file_data['url'])
     background_tasks.add_task(scrape_and_index)
