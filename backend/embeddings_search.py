@@ -7,7 +7,12 @@ class SemanticSearchEngine:
         # Clean, standard initialization
         self.client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = self.client.get_or_create_collection(name="campus_docs")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.model = None
+
+    def _get_model(self):
+        if self.model is None:
+            self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        return self.model
 
     def index_document(self, text: str, metadata: dict):
         chunk_size = 500
@@ -16,7 +21,7 @@ class SemanticSearchEngine:
         if not chunks:
             return
 
-        embeddings = self.model.encode(chunks).tolist()
+        embeddings = self._get_model().encode(chunks).tolist()
         
         ids = [f"{metadata['title']}_{i}_{str(uuid.uuid4())[:8]}" for i in range(len(chunks))]
         metadatas = [metadata for _ in range(len(chunks))]
@@ -29,7 +34,7 @@ class SemanticSearchEngine:
         )
 
     def search(self, query: str, n_results: int = 5, filters: dict = None):
-        query_embedding = self.model.encode([query]).tolist()
+        query_embedding = self._get_model().encode([query]).tolist()
         
         results = self.collection.query(
             query_embeddings=query_embedding,
