@@ -35,8 +35,8 @@ else:
 DOCS_FOLDER = Path("documents")
 DOCS_FOLDER.mkdir(exist_ok=True)
 
-ocr_processor = OCRProcessor()
-search_engine = SemanticSearchEngine()
+ocr_processor = None
+search_engine = None
 scheduler = BackgroundScheduler()
 
 def scheduled_scraper_job():
@@ -48,6 +48,11 @@ def scheduled_scraper_job():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global ocr_processor, search_engine
+    logger.info("Initializing ML Models...")
+    ocr_processor = OCRProcessor()
+    search_engine = SemanticSearchEngine()
+    
     logger.info("Starting up Background Scheduler...")
     scheduler.add_job(scheduled_scraper_job, 'interval', hours=1)
     scheduler.start()
@@ -325,4 +330,5 @@ async def search_documents(query: SearchQuery):
     return response_items
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
