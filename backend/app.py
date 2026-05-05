@@ -39,7 +39,22 @@ ocr_processor = None
 search_engine = None
 scheduler = BackgroundScheduler()
 
+import threading
+
+def init_models():
+    global ocr_processor, search_engine
+    try:
+        logger.info("Initializing ML Models in background...")
+        ocr_processor = OCRProcessor()
+        search_engine = SemanticSearchEngine()
+        logger.info("ML Models initialized successfully!")
+    except Exception as e:
+        logger.error(f"Failed to initialize ML models: {e}")
+
 def scheduled_scraper_job():
+    if search_engine is None:
+        logger.warning("Search engine not ready, skipping scraper job.")
+        return
     existing_filenames = search_engine.get_all_filenames()
     new_files = scrape_website(TARGET_WEBSITE, existing_filenames)
     if new_files:
@@ -49,9 +64,8 @@ def scheduled_scraper_job():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ocr_processor, search_engine
-    logger.info("Initializing ML Models...")
-    ocr_processor = OCRProcessor()
-    search_engine = SemanticSearchEngine()
+    
+    threading.Thread(target=init_models, daemon=True).start()
     
     logger.info("Starting up Background Scheduler...")
     scheduler.add_job(scheduled_scraper_job, 'interval', hours=1)
@@ -230,6 +244,8 @@ async def root():
 
 @app.get("/api/stats")
 async def get_stats():
+    if search_engine is None:
+        return {"total_documents": 0, "storage_used": "In-Memory", "system_health": "Initializing...", "latency": "0ms", "activity_data": []}
     try:
         doc_count = search_engine.get_document_count()
         storage_mb = "In-Memory"
@@ -251,6 +267,8 @@ async def get_stats():
 
 @app.post("/api/trigger-scrape")
 async def manual_scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
+    if search_engine is None:
+        raise HTTPException(status_code=503, detail="Models are still initializing. Please try again.")
     def scrape_and_index():
         existing_filenames = search_engine.get_all_filenames()
         new_files = scrape_website(
@@ -268,6 +286,8 @@ async def manual_scrape(request: ScrapeRequest, background_tasks: BackgroundTask
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
+    if ocr_processor is None or search_engine is None:
+        raise HTTPException(status_code=503, detail="Models are still initializing. Please try again.")
     try:
         file_bytes = await file.read()
         if process_memory_file(file.filename, file_bytes, source_url="#"):
@@ -280,6 +300,8 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.delete("/api/documents/{filename}")
 async def delete_document(filename: str):
+    if search_engine is None:
+        raise HTTPException(status_code=503, detail="Models are still initializing. Please try again.")
     try:
         file_path = DOCS_FOLDER / filename
         if file_path.exists(): os.remove(file_path)
@@ -290,6 +312,8 @@ async def delete_document(filename: str):
 
 @app.post("/api/scan")
 async def scan_documents_folder():
+    if ocr_processor is None or search_engine is None:
+        raise HTTPException(status_code=503, detail="Models are still initializing. Please try again.")
     files = [f for f in DOCS_FOLDER.iterdir() if f.is_file()]
     count = 0
     for file_path in files:
@@ -299,6 +323,8 @@ async def scan_documents_folder():
 
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_documents(query: SearchQuery):
+    if search_engine is None:
+        raise HTTPException(status_code=503, detail="Search engine is still initializing. Please try again.")
     results = search_engine.search(query=query.query, n_results=query.limit)
     response_items = []
     

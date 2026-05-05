@@ -468,7 +468,6 @@ const SearchPage: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             <div className="space-y-2 mb-8">
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('dashboard'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}><LayoutGrid size={18} /> Dashboard</motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('about'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'about' ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}><Cpu size={18} /> System Info</motion.button>
             </div>
             <div className="mb-2 px-4 flex justify-between items-center text-xs font-semibold text-slate-500 uppercase tracking-wider"><span>Recent History</span>{searchHistory.length > 0 && <button onClick={clearHistory} className="hover:text-red-500 transition-colors">Clear</button>}</div>
             <div className="space-y-1">
@@ -483,7 +482,7 @@ const SearchPage: React.FC = () => {
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <header className={`${theme.header}`}>
-            <div className="flex items-center gap-4"><button className={`p-2 rounded-xl transition-colors ${theme.iconBtn}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}</button><h2 className="font-heading font-bold text-2xl tracking-tight hidden md:block text-gradient">{currentView === 'dashboard' ? 'Dashboard' : 'System Architecture'}</h2></div>
+            <div className="flex items-center gap-4"><button className={`p-2 rounded-xl transition-colors ${theme.iconBtn}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}</button><h2 className="font-heading font-bold text-2xl tracking-tight hidden md:block text-gradient">Dashboard</h2></div>
             <div className="flex items-center gap-2 md:gap-3">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}><Globe size={14} className="text-emerald-500" /> <span className="hidden md:inline">Live Scrape</span></motion.button>
                 <motion.button whileTap={{ rotate: 360 }} onClick={handleScan} disabled={scanning} className={`p-2 rounded-full text-slate-400 hover:text-blue-500 transition-colors ${scanning ? 'animate-spin' : ''}`}><RefreshCw size={20} /></motion.button>
@@ -496,87 +495,6 @@ const SearchPage: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth custom-scrollbar relative">
             <div className="max-w-6xl mx-auto w-full">
-                {currentView === 'about' && (
-                    <motion.div initial="hidden" animate="show" variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }} className="space-y-8 pb-12">
-                        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className={`p-8 rounded-2xl border ${theme.card} relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-6`}>
-                            <div className="relative z-10 flex-1">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold tracking-widest uppercase mb-4 shadow-sm border border-emerald-200">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    All Systems Operational
-                                </div>
-                                <h2 className={`font-heading text-4xl font-extrabold mb-3 text-gray-900 tracking-tight`}>System Architecture</h2>
-                                <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">Campus Insight is built on a modern, high-performance tech stack designed for speed, accuracy, and infinite scalability. Our pipeline processes documents entirely in-memory for maximum efficiency.</p>
-                            </div>
-                            <div className="relative z-10 flex gap-4 hidden sm:flex">
-                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-50 border border-indigo-100 flex items-center justify-center shadow-inner"><Server size={32} className="text-indigo-500" /></div>
-                            </div>
-                            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-indigo-500/5 to-transparent pointer-events-none"></div>
-                        </motion.div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-blue-500/10 rounded-xl text-blue-600 shadow-inner"><Code size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Frontend</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">React 18 & TS</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Core UI</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Tailwind CSS</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Glassmorphism</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Framer Motion</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Animations</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Recharts</span><span className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100 font-bold tracking-wide">Analytics</span></li>
-                                </ul>
-                            </motion.div>
-                            
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-600 shadow-inner"><Terminal size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Backend System</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Python 3.12+</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Runtime</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">FastAPI</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Async API</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Uvicorn</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">ASGI Server</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">APScheduler</span><span className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold tracking-wide">Cron Jobs</span></li>
-                                </ul>
-                            </motion.div>
-                            
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-purple-500/10 rounded-xl text-purple-600 shadow-inner"><Cpu size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">AI & Intelligence</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Gemini 1.5 Flash</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">LLM Engine</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Tesseract OCR</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Vision AI</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">PDF2Image</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Rasterization</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Regex Engines</span><span className="text-xs px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100 font-bold tracking-wide">Meta Extract</span></li>
-                                </ul>
-                            </motion.div>
-                            
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-orange-500/10 rounded-xl text-orange-600 shadow-inner"><Database size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Storage Engine</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">ChromaDB</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Vector Space</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">In-Memory IO</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Zero-Disk</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">MiniLM Embeds</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">384-Dim Tensors</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Cosine Distance</span><span className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-600 border border-orange-100 font-bold tracking-wide">Search Metric</span></li>
-                                </ul>
-                            </motion.div>
-                            
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-pink-500/10 rounded-xl text-pink-600 shadow-inner"><Globe size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Data Pipeline</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">BeautifulSoup4</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">DOM Parser</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Python Requests</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">HTTP Client</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Async Workers</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">Parallel Exec</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">MIME Filters</span><span className="text-xs px-2 py-1 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-bold tracking-wide">Type Router</span></li>
-                                </ul>
-                            </motion.div>
-                            
-                            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} whileHover={{ y: -5, scale: 1.02 }} className={`p-6 rounded-2xl border ${theme.card} flex flex-col`}>
-                                <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-rose-500/10 rounded-xl text-rose-600 shadow-inner"><Activity size={24} /></div><h3 className="font-heading text-xl font-bold text-gray-900">Performance</h3></div>
-                                <ul className="space-y-3 flex-1">
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">RAM Streamer</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">I/O Optimization</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Chunking Engine</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">LLM Fit</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">CORS Policy</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">Edge Security</span></li>
-                                    <li className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-white/50"><span className="font-semibold text-slate-700">Graceful Failover</span><span className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100 font-bold tracking-wide">Error Handling</span></li>
-                                </ul>
-                            </motion.div>
-                        </div>
-                    </motion.div>
-                )}
-
                 {currentView === 'dashboard' && (
                     <>
                     <div className="flex flex-col items-center justify-center mb-10 relative">
