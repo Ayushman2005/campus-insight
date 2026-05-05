@@ -1,5 +1,4 @@
 import chromadb
-from sentence_transformers import SentenceTransformer
 import uuid
 
 class SemanticSearchEngine:
@@ -11,6 +10,8 @@ class SemanticSearchEngine:
 
     def _get_model(self):
         if self.model is None:
+            # Defer heavy import to prevent blocking startup and OOM crashes
+            from sentence_transformers import SentenceTransformer
             self.model = SentenceTransformer('all-MiniLM-L6-v2')
         return self.model
 
