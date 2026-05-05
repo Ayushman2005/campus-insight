@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Search, CheckCircle, Bell, Trash2, X, GraduationCap, 
-  Activity, Server, LayoutGrid, Sun, Moon, Database, 
+  Activity, Server, LayoutGrid, Database, 
   Eye, HardDrive, Zap, HelpCircle, UploadCloud, FilePlus, Globe, 
-  History, ChevronRight, Menu, Clock, AlertTriangle,
-  RefreshCw, AlertCircle, Cpu, Code, Layers, Box, Terminal, Sparkles
+  History, ChevronRight, Menu, Clock,
+  RefreshCw, AlertCircle, Sparkles
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, Legend 
