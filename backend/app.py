@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=init_models, daemon=True).start()
     
     logger.info("Starting up Background Scheduler...")
-    scheduler.add_job(scheduled_scraper_job, 'interval', hours=1)
+    scheduler.add_job(scheduled_scraper_job, 'interval', hours=1, misfire_grace_time=None)
     scheduler.start()
     
     yield
