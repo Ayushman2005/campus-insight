@@ -439,7 +439,7 @@ const SearchPage: React.FC = () => {
     progressBarBg: isDarkMode ? "bg-slate-800/50" : "bg-white/50",
     divider: isDarkMode ? "border-slate-800/50" : "border-white/50",
     iconBtn: isDarkMode ? "text-slate-300 hover:text-white hover:bg-slate-800/50" : "text-gray-600 hover:text-indigo-600 hover:bg-white/50",
-    dropdown: "glass absolute right-0 mt-3 w-72 md:w-80 rounded-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2",
+    dropdown: "glass absolute right-0 mt-3 w-72 md:w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2",
     dropdownItem: isDarkMode ? "hover:bg-slate-800/50 border-slate-700/50" : "hover:bg-white/50 border-white/50",
     sidebar: "glass fixed md:relative inset-y-0 left-0 z-40 flex flex-col overflow-hidden w-[260px] m-2 rounded-2xl md:my-4 md:ml-4",
   };
@@ -460,7 +460,7 @@ const SearchPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <motion.aside initial={false} animate={{ x: isSidebarOpen ? 0 : (isMobile ? '-100%' : 0), width: !isMobile && !isSidebarOpen ? 0 : 260, opacity: !isMobile && !isSidebarOpen ? 0 : 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className={`z-40 ${theme.sidebar}`}>
+      <motion.aside initial={false} animate={{ x: isSidebarOpen ? 0 : (isMobile ? -320 : 0), width: !isMobile && !isSidebarOpen ? 0 : 260, opacity: !isMobile && !isSidebarOpen ? 0 : 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className={`z-40 ${theme.sidebar}`}>
         <div className="p-6 flex items-center gap-3 border-b border-white/20 dark:border-slate-800/50">
            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20"><GraduationCap className="text-white" size={20} /></div>
            <h1 className="font-heading font-bold text-xl tracking-tight whitespace-nowrap">Campus Insight</h1>
@@ -484,7 +484,7 @@ const SearchPage: React.FC = () => {
         <header className={`${theme.header}`}>
             <div className="flex items-center gap-4"><button className={`p-2 rounded-xl transition-colors ${theme.iconBtn}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isMobile ? <Menu size={20} /> : <ChevronRight size={20} className={`transform transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : '0'}`}/>}</button><h2 className="font-heading font-bold text-2xl tracking-tight hidden md:block text-gradient">Dashboard</h2></div>
             <div className="flex items-center gap-2 md:gap-3">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}><Globe size={14} className="text-emerald-500" /> <span className="hidden md:inline">Live Scrape</span></motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowScrapeModal(true)} className={`flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`}><Globe size={16} className="text-emerald-500" /> <span className="hidden sm:inline">Live Scrape</span></motion.button>
                 <motion.button whileTap={{ rotate: 360 }} onClick={handleScan} disabled={scanning} className={`p-2 rounded-full text-slate-400 hover:text-blue-500 transition-colors ${scanning ? 'animate-spin' : ''}`}><RefreshCw size={20} /></motion.button>
                 <div className="relative">
                   <motion.button whileHover={{ scale: 1.1 }} onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }} className={`p-2 rounded-full relative transition-colors ${theme.iconBtn}`}><Bell size={20} />{notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>}</motion.button>
@@ -509,9 +509,9 @@ const SearchPage: React.FC = () => {
                         <div className="flex items-center justify-between px-2 mb-2"><span className="text-sm font-medium opacity-70">Found {results.length} results</span></div>
                         {results.map((result) => (
                           <motion.div key={result.id} variants={itemVariants} whileHover={{ scale: 1.01, y: -4 }} layout className={`group rounded-xl p-5 border transition-all ${theme.card} hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/10`}>
-                            <div className="flex justify-between items-start mb-2"><h3 className={`font-heading text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3></div>
+                            <div className="flex justify-between items-start mb-2"><h3 className={`font-heading text-lg sm:text-xl font-bold break-words pr-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{result.title}</h3></div>
                             <div className="mb-4">{renderSnippet(result.content, query, result.extracted_answer)}</div>
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-500/10"><div className="flex items-center gap-2 text-xs text-slate-500 font-mono"><span className="p-1 rounded bg-slate-100 dark:bg-slate-800"><HardDrive size={10}/></span><span className="truncate max-w-[150px]">{result.source_url ? result.source_url.split('/').pop() : 'Unknown File'}</span></div><div className="flex gap-2"><button onClick={() => result.source_url && handleDelete(result.source_url)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={16} /></button><button onClick={() => setPreviewDoc(result)} className="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-1"><Eye size={14} /> View</button></div></div>
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-500/10"><div className="flex items-center gap-2 text-xs text-slate-500 font-mono flex-1 min-w-0 mr-2"><span className="p-1 rounded bg-slate-100 dark:bg-slate-800 flex-shrink-0"><HardDrive size={10}/></span><span className="truncate">{result.source_url ? result.source_url.split('/').pop() : 'Unknown File'}</span></div><div className="flex gap-2 flex-shrink-0"><button onClick={() => result.source_url && handleDelete(result.source_url)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={16} /></button><button onClick={() => setPreviewDoc(result)} className="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-1"><Eye size={14} /> View</button></div></div>
                           </motion.div>
                         ))}
                       </motion.div>
@@ -545,7 +545,7 @@ const SearchPage: React.FC = () => {
                    <input type="text" value={scrapeUrl} onChange={(e) => setScrapeUrl(e.target.value)} placeholder="https://college.edu/notices" className={`w-full p-3 rounded-lg border ${theme.inputBg} focus:ring-2 focus:ring-emerald-500 outline-none transition-all`} />
                  </div>
                  
-                 <div className="grid grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
                      <input type="checkbox" checked={scrapeOptions.extract_text} onChange={(e) => setScrapeOptions({...scrapeOptions, extract_text: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded" />
                      <span className="text-sm font-semibold">Extract Page Text</span>
@@ -578,8 +578,10 @@ const SearchPage: React.FC = () => {
       )}
 
       {toast.show && (
-        <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} className={`fixed bottom-6 right-6 max-w-sm w-[90%] md:w-full rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 ${isDarkMode ? 'bg-slate-900 border-emerald-500' : 'bg-white border-emerald-500'}`}>
-           <CheckCircle className="text-emerald-500 flex-shrink-0" size={20} />
+        <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className={`fixed bottom-4 left-4 right-4 md:left-auto md:bottom-6 md:right-6 md:w-96 rounded-xl shadow-2xl border-l-4 p-4 flex items-start gap-3 z-50 ${isDarkMode ? 'bg-slate-900' : 'bg-white'} ${toast.type === 'error' ? 'border-red-500' : 'border-emerald-500'}`}>
+           <div className={`flex-shrink-0 mt-0.5 ${toast.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
+             {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+           </div>
            <p className={`text-sm ${theme.text}`}>{toast.message}</p>
         </motion.div>
       )}
