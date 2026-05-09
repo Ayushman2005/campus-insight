@@ -526,7 +526,19 @@ const SearchPage: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             <div className="space-y-2 mb-8">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setCurrentView('dashboard'); if(isMobile) setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}><LayoutGrid size={18} /> Dashboard</motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.02 }} 
+                whileTap={{ scale: 0.98 }} 
+                onClick={() => { 
+                  setCurrentView('dashboard'); 
+                  setQuery(''); 
+                  setResults([]); 
+                  if(isMobile) setIsSidebarOpen(false); 
+                }} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'dashboard' && results.length === 0 && !query ? 'bg-gradient-primary text-white shadow-lg' : 'hover:bg-white/50 dark:hover:bg-slate-800/50 text-slate-500'}`}
+              >
+                <LayoutGrid size={18} /> Dashboard
+              </motion.button>
             </div>
             <div className="mb-2 px-4 flex justify-between items-center text-xs font-semibold text-slate-500 uppercase tracking-wider"><span>Recent History</span>{searchHistory.length > 0 && <button onClick={clearHistory} className="hover:text-red-500 transition-colors">Clear</button>}</div>
             <div className="space-y-1">
