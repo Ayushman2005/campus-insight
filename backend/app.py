@@ -16,6 +16,9 @@ import uvicorn
 import logging
 from google import genai
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from ocr_processor import OCRProcessor
 from embeddings_search import SemanticSearchEngine
@@ -28,8 +31,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
 
 if GEMINI_API_KEY:
+    logger.info(f"GEMINI_API_KEY found (starts with {GEMINI_API_KEY[:8]}...)")
     client = genai.Client(api_key=GEMINI_API_KEY)
 else:
+    logger.error("GEMINI_API_KEY NOT FOUND in environment!")
     client = None
 
 DOCS_FOLDER = Path("documents")
@@ -45,7 +50,7 @@ def init_models():
     global ocr_processor, search_engine
     try:
         logger.info("Initializing ML Models in background...")
-        ocr_processor = OCRProcessor()
+        ocr_processor = OCRProcessor(genai_client=client)
         search_engine = SemanticSearchEngine()
         logger.info("ML Models initialized successfully!")
     except Exception as e:
@@ -159,7 +164,7 @@ def get_ai_extraction(text: str, query: str) -> str:
             return None
             
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-flash-latest',
             contents=prompt
         )
         answer = response.text.strip().replace('"', '').replace("'", "").replace(".", "")
@@ -294,6 +299,8 @@ async def upload_file(file: UploadFile = File(...)):
              return {"status": "success", "message": f"Uploaded and indexed {file.filename} in memory"}
         
         raise HTTPException(status_code=422, detail="Failed to extract text or index the document. Check backend terminal.")
+    except HTTPException as he:
+        raise he
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

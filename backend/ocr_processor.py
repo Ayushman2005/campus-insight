@@ -13,6 +13,7 @@ import cv2
 from pathlib import Path
 import logging
 import re
+from google.genai import types
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,9 +24,14 @@ class OCRProcessor:
     Includes preprocessing for better accuracy
     """
     
-    def __init__(self, language='eng'):
+    def __init__(self, language='eng', genai_client=None):
         self.language = language
         self.supported_formats = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
+        self.client = genai_client
+        if self.client:
+            logger.info("OCRProcessor initialized with Gemini client.")
+        else:
+            logger.warning("OCRProcessor initialized WITHOUT Gemini client!")
     
     def cleanup_text(self, text: str) -> str:
         """
@@ -81,6 +87,36 @@ class OCRProcessor:
         img = Image.open(image_path)
         return self.preprocess_image_obj(img)
     
+    def extract_text_with_gemini(self, file_bytes: bytes, mime_type: str) -> str:
+        """
+        Uses Google Gemini to extract text from a document or image.
+        """
+        logger.info(f"Gemini OCR requested for mime_type: {mime_type} (Size: {len(file_bytes)} bytes)")
+        if not self.client:
+            logger.warning("Gemini client not initialized. Skipping AI OCR.")
+            return ""
+        
+        try:
+            prompt = "Extract all text from this document accurately. Maintain layout where possible. Return ONLY the extracted text."
+            
+            response = self.client.models.generate_content(
+                model='gemini-flash-latest',
+                contents=[
+                    prompt,
+                    types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+                ]
+            )
+            
+            if response and response.text:
+                extracted_text = response.text.strip()
+                logger.info(f"Gemini OCR successful. Extracted {len(extracted_text)} characters.")
+                return extracted_text
+            logger.warning("Gemini OCR returned no text.")
+            return ""
+        except Exception as e:
+            logger.error(f"Gemini OCR failed: {e}")
+            return ""
+
     def extract_text_from_image_obj(self, img: Image.Image, preprocess: bool = True) -> str:
         try:
             if preprocess:
@@ -99,16 +135,23 @@ class OCRProcessor:
             return clean_text.strip()
         
         except Exception as e:
-            logger.error(f"Error extracting text from image object: {str(e)}")
+            logger.warning(f"Local Tesseract failed: {str(e)}. Will try Gemini if available.")
             return ""
 
     def extract_text_from_image_bytes(self, image_bytes: bytes, preprocess: bool = True) -> str:
+        # Try local first
+        res = ""
         try:
             img = Image.open(io.BytesIO(image_bytes))
-            return self.extract_text_from_image_obj(img, preprocess)
+            res = self.extract_text_from_image_obj(img, preprocess)
         except Exception as e:
-            logger.error(f"Error loading image from bytes: {str(e)}")
-            return ""
+            logger.warning(f"Local image open failed: {e}")
+            
+        # Fallback to Gemini
+        if not res and self.client:
+            res = self.extract_text_with_gemini(image_bytes, "image/jpeg") # JPEG is a safe guess for bytes
+            
+        return res
 
     def extract_text_from_image(self, image_path: str, preprocess: bool = True) -> str:
         try:
@@ -121,6 +164,7 @@ class OCRProcessor:
             return ""
 
     def extract_text_from_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 300) -> str:
+        res = ""
         try:
             poppler_path = r"C:\Program Files\Poppler\Library\bin" if os.name == 'nt' else None
             images = pdf2image.convert_from_bytes(pdf_bytes, dpi=dpi, poppler_path=poppler_path)
@@ -129,12 +173,15 @@ class OCRProcessor:
             for image in images:
                 page_text = self.extract_text_from_image_obj(image, preprocess=True)
                 all_text.append(page_text)
-                
-            return "\n\n".join(all_text)
-        
+            res = "\n\n".join(all_text)
         except Exception as e:
-            logger.error(f"Error extracting text from PDF bytes: {str(e)}")
-            return ""
+            logger.warning(f"Local PDF processing failed: {e}. Trying Gemini...")
+        
+        # Fallback to Gemini
+        if not res and self.client:
+            res = self.extract_text_with_gemini(pdf_bytes, "application/pdf")
+            
+        return res
     
     def extract_text_from_pdf(self, pdf_path: str, dpi: int = 300) -> str:
         try:

@@ -310,17 +310,23 @@ const SearchPage: React.FC = () => {
                 body: formData
             });
             const data = await response.json();
-            if (data.status === 'success') successCount++;
+            if (data.status === 'success') {
+                successCount++;
+            } else {
+                addNotification('error', data.detail || `Failed to process ${file.name}`);
+            }
         } catch (error) {
             console.error("Upload error", error);
+            addNotification('error', `Connection error while uploading ${file.name}`);
         }
     }
     setScanning(false);
-    if (successCount > 0) {
-        addNotification('success', `Processed ${successCount} files.`);
+    if (successCount > 0 && successCount === files.length) {
+        addNotification('success', `Successfully processed all ${successCount} files.`);
         fetchStats(); 
-    } else {
-        addNotification('error', 'Upload failed.');
+    } else if (successCount > 0) {
+        addNotification('success', `Processed ${successCount} of ${files.length} files.`);
+        fetchStats();
     }
   }, [addNotification, fetchStats]); 
 
