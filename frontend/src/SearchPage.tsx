@@ -92,9 +92,52 @@ const SkeletonCard = () => (
   </div>
 );
 
+const LoadingScreen = () => (
+  <motion.div 
+    key="loading-screen"
+    initial={{ opacity: 1 }}
+    exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+    className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950"
+  >
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
+    </div>
+    
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="relative z-10 flex flex-col items-center"
+    >
+      <div className="p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl shadow-indigo-500/40 mb-8 animate-float">
+        <GraduationCap size={64} className="text-white" />
+      </div>
+      
+      <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tighter mb-4">
+        Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Insight</span>
+      </h1>
+      
+      <div className="flex items-center gap-2 text-slate-400 font-medium text-sm md:text-base">
+        <RefreshCw size={16} className="animate-spin text-blue-400" />
+        <span>Initializing Digital Archaeology Engine...</span>
+      </div>
+      
+      <div className="mt-12 w-48 md:w-64 h-1 bg-white/10 rounded-full overflow-hidden">
+        <motion.div 
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+          className="h-full w-1/2 bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+        />
+      </div>
+    </motion.div>
+  </motion.div>
+);
+
 // --- MAIN PAGE ---
 
 const SearchPage: React.FC = () => {
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -142,7 +185,14 @@ const SearchPage: React.FC = () => {
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    
+    // Simulate initial load
+    const timer = setTimeout(() => setIsInitialLoading(false), 2500);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -452,6 +502,9 @@ const SearchPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-500 flex ${theme.bg} ${theme.text} relative overflow-hidden`} onClick={() => setShowDropdown(false)}>
+      <AnimatePresence>
+        {isInitialLoading && <LoadingScreen />}
+      </AnimatePresence>
       
       {/* Animated Background Blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
