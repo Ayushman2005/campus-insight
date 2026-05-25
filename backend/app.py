@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") 
-TARGET_WEBSITE = "https://www.giet.edu/news-events/notice-board/"
+TARGET_WEBSITE = ""
 
 if GEMINI_API_KEY:
     logger.info(f"GEMINI_API_KEY found (starts with {GEMINI_API_KEY[:8]}...)")
